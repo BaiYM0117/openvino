@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -181,8 +181,6 @@ void argmax_many_classes_has_axis(const float* src_data, float* dst_data, Shape 
             vec_type_i vtmp_indexes;
             vmask_type vmask;
             int s_index = i0 * dim * after_num + ib1 * block_size;
-
-            std::memset(reinterpret_cast<void*>(&vmax_values[0]), 0, sizeof(vmax_values));
 
             auto vswap_func = [&](int index1, int index2) {
                 vtmp = vmax_values[index1];

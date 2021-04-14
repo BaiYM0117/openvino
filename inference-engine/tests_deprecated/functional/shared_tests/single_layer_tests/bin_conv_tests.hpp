@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -90,6 +90,19 @@ class BinaryConvolutionOnlyTest : public TestsCommon,
 
 protected:
 
+    static void fill_data_bin(float *data, size_t size) {
+        for (size_t i = 0; i < size; i++) {
+            data[i] = sinf((float)i) > 0.f ? 1.f : -1.f;
+        }
+    }
+
+    static void fill_data_bin_packed(int8_t *data, size_t size) {
+        int nbits = 8;
+        for (size_t i = 0; i < div_up(size, nbits); i++) {
+            data[i] = static_cast<int8_t>(i % 255);
+        }
+    }
+
     size_t calculateOutDim(size_t in_dim, size_t kernel, size_t stride, size_t pad_begin) {
         return (in_dim + 2lu * pad_begin - kernel) / stride + 1lu;
     }
@@ -158,7 +171,7 @@ protected:
                          const bin_conv_common_params& prm) {
         if (src.getTensorDesc().getLayout() != Layout::NCHW &&
             dst.getTensorDesc().getLayout() != Layout::NCDHW)
-            THROW_IE_EXCEPTION << "Reference FP32 convolution supports NCHW and NCDHW layouts only";
+            IE_THROW() << "Reference FP32 convolution supports NCHW and NCDHW layouts only";
         size_t KW = prm.kernel[X_AXIS];
         size_t KH = prm.kernel[Y_AXIS];
         size_t KD = prm.kernel.size() > Z_AXIS ? prm.kernel[Z_AXIS] : 1lu;
@@ -324,7 +337,7 @@ protected:
             infer(network, p, src, dst);
 
             compare(*dst, *dst_ref);
-        } catch (const InferenceEngine::details::InferenceEngineException &e) {
+        } catch (const InferenceEngine::Exception &e) {
             FAIL() << e.what();
         }
     }

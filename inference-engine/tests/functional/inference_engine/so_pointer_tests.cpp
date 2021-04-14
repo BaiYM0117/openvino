@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -7,12 +7,12 @@
 #include <gmock/gmock-spec-builders.h>
 
 #include <file_utils.h>
-#include <ie_plugin_ptr.hpp>
 
 #include <memory>
 #include <common_test_utils/test_assertions.hpp>
 #include <details/ie_so_pointer.hpp>
-#include <details/ie_irelease.hpp>
+#include <cpp_interfaces/interface/ie_iplugin_internal.hpp>
+#include <ie_plugin_ptr.hpp>
 
 using namespace InferenceEngine;
 using namespace InferenceEngine::details;
@@ -80,10 +80,12 @@ namespace InferenceEngine {
 
 namespace details {
 
+struct UnknownPlugin : std::enable_shared_from_this<UnknownPlugin> {};
+
 template<>
-class SOCreatorTrait<InferenceEngine::details::IRelease> {
+class SOCreatorTrait<InferenceEngine::details::UnknownPlugin> {
 public:
-    static constexpr auto name = "CreateIRelease";
+    static constexpr auto name = "CreateUnknownPlugin";
 };
 
 }  // namespace details
@@ -91,34 +93,16 @@ public:
 }  // namespace InferenceEngine
 
 TEST_F(SoPointerTests, UnknownPlugin) {
-    ASSERT_THROW(SOPointer<InferenceEngine::details::IRelease>("UnknownPlugin"), InferenceEngineException);
+    ASSERT_THROW(SOPointer<InferenceEngine::details::UnknownPlugin>("UnknownPlugin"), Exception);
 }
 
 TEST_F(SoPointerTests, UnknownPluginExceptionStr) {
     try {
-        SOPointer<InferenceEngine::details::IRelease>("UnknownPlugin");
+        SOPointer<InferenceEngine::details::UnknownPlugin>("UnknownPlugin");
     }
-    catch (InferenceEngineException &e) {
+    catch (Exception &e) {
         ASSERT_STR_CONTAINS(e.what(), "Cannot load library 'UnknownPlugin':");
         ASSERT_STR_DOES_NOT_CONTAIN(e.what(), "path:");
         ASSERT_STR_DOES_NOT_CONTAIN(e.what(), "from CWD:");
     }
-}
-
-using SymbolLoaderTests = ::testing::Test;
-
-TEST_F(SymbolLoaderTests, throwCreateNullPtr) {
-    ASSERT_THROW(SymbolLoader<SharedObjectLoader>(nullptr), InferenceEngineException);
-}
-
-TEST_F(SymbolLoaderTests, instantiateSymbol) {
-    std::string name = FileUtils::makeSharedLibraryName<char>(getIELibraryPath(),
-        std::string("mock_engine") + IE_BUILD_POSTFIX);
-    std::shared_ptr<SharedObjectLoader> sharedLoader(new SharedObjectLoader(name.c_str()));
-    SymbolLoader<SharedObjectLoader> loader(sharedLoader);
-    IE_SUPPRESS_DEPRECATED_START
-    IInferencePlugin * value = nullptr;
-    ASSERT_NE(nullptr, value = loader.instantiateSymbol<IInferencePlugin>(SOCreatorTrait<IInferencePlugin>::name));
-    value->Release();
-    IE_SUPPRESS_DEPRECATED_END
 }

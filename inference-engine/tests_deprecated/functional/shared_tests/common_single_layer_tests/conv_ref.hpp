@@ -1,14 +1,14 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
 #pragma once
 
-#include <ie_layers.h>
-#include <ie_layers_property.hpp>
+#include <legacy/ie_layers.h>
+#include <legacy/ie_layers_property.hpp>
 #include <ie_blob.h>
 #include <precision_utils.h>
-#include <ie_layers_internal.hpp>
+#include <legacy/ie_layers_internal.hpp>
 #include "common_test_utils/common_layers_params.hpp"
 
 template<typename wei_data_t, typename bias_data_t>

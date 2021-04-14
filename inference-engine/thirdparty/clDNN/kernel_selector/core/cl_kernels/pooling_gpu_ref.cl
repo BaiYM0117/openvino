@@ -1,17 +1,6 @@
-// Copyright (c) 2016-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 
 #include "include/include_all.cl"
 
@@ -44,7 +33,7 @@ KERNEL(pooling_gpu)(
 )
 {
 #if OUTPUT_LAYOUT_BFYX  || OUTPUT_LAYOUT_BYXF || OUTPUT_LAYOUT_BFZYX ||\
-    OUTPUT_LAYOUT_B_FS_ZYX_FSV16 || OUTPUT_LAYOUT_BS_FS_ZYX_BSV16_FSV16
+    OUTPUT_LAYOUT_B_FS_ZYX_FSV16 || OUTPUT_LAYOUT_BS_FS_ZYX_BSV16_FSV16 || OUTPUT_LAYOUT_B_FS_YX_FSV4
     const uint x    = (uint)get_global_id(0);
 #if OUTPUT_DIMS == 5
     const uint y   = (uint)get_global_id(1) % OUTPUT_SIZE_Y;
@@ -81,15 +70,18 @@ KERNEL(pooling_gpu)(
     if (f >= OUTPUT_FEATURE_NUM) {
         return;
     }
-#elif OUTPUT_LAYOUT_YXFB
+#else
     const uint x    = (uint)get_global_id(1);
+#if OUTPUT_DIMS == 5
+    const uint y    = (uint)get_global_id(2) % OUTPUT_SIZE_Y;
+    const uint z    = (uint)get_global_id(2) / OUTPUT_SIZE_Y;
+#else
     const uint y    = (uint)get_global_id(2);
+    const uint z    = 0;
+#endif
     const uint bf   = (uint)get_global_id(0);
     const uint f    = bf / INPUT0_BATCH_NUM;
     const uint b    = bf % INPUT0_BATCH_NUM;
-    const uint z    = 0;
-#else
-    #error "pooling_gpu_ref: unsupported layout"
 #endif
 
     const int offset_x = (int)x*STRIDE_SIZE_X - PADDING_SIZE_X;
@@ -272,7 +264,7 @@ KERNEL(pooling_gpu)(
 
     OUTPUT_TYPE final_result;
     ACTIVATION_TYPE pool_result = TO_ACTIVATION_TYPE(result);
-    
+
 #if HAS_FUSED_OPS
       FUSED_OPS;
       final_result = FUSED_OPS_RESULT;

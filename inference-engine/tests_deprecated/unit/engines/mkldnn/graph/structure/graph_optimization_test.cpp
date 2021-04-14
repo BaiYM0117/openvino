@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -8,7 +8,6 @@
 #include <mkldnn_extension_mngr.h>
 #include "tests_common.hpp"
 #include <ie_core.hpp>
-
 
 using namespace ::testing;
 using namespace std;
@@ -292,7 +291,7 @@ private:
     InferenceEngine::CNNLayer * cnnLayer;
 };
 
-class FakeFabric : public InferenceEngine::IExtension {
+class FakeFabric : public InferenceEngine::Extensions::Cpu::MKLDNNExtensions {
 public:
     FakeFabric() {
         factories["ReLU"] = [](const InferenceEngine::CNNLayer * cnnLayer) -> InferenceEngine::ILayerImplFactory* { return new FakeReLUFactory(cnnLayer); };
@@ -304,9 +303,6 @@ public:
 
     void GetVersion(const InferenceEngine::Version *&versionInfo) const noexcept override {}
     void Unload() noexcept override {}
-    void Release() noexcept override {
-        delete this;
-    }
     InferenceEngine::StatusCode getPrimitiveTypes(char**& types, unsigned int& size, InferenceEngine::ResponseDesc* resp) noexcept override {
         types = new char *[factories.size()];
         size_t count = 0;
@@ -327,11 +323,6 @@ public:
         }
         factory = factories[cnnLayer->type](cnnLayer);
         return InferenceEngine::OK;
-    }
-
-    InferenceEngine::StatusCode getShapeInferImpl(InferenceEngine::IShapeInferImpl::Ptr& impl, const char* type,
-                                                  InferenceEngine::ResponseDesc* resp) noexcept override {
-        return InferenceEngine::NOT_IMPLEMENTED;
     }
 
 private:

@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -7,7 +7,6 @@
 #include <vector>
 #include <memory>
 
-#include <inference_engine.hpp>
 #include <ie_compound_blob.h>
 
 #include <cldnn/cldnn_config.hpp>
@@ -31,7 +30,7 @@ protected:
     }
 };
 
-TEST_F(RemoteBlob_Test, canInputUserBlob) {
+TEST_F(RemoteBlob_Test, smoke_canInputUserBlob) {
 #if defined(_WIN32) || defined(ANDROID)
     GTEST_SKIP();
 #endif
@@ -86,7 +85,7 @@ TEST_F(RemoteBlob_Test, canInputUserBlob) {
     }
 }
 
-TEST_F(RemoteBlob_Test, canInferOnUserContext) {
+TEST_F(RemoteBlob_Test, smoke_canInferOnUserContext) {
 #if defined _WIN32
     GTEST_SKIP();
 #endif
@@ -98,8 +97,8 @@ TEST_F(RemoteBlob_Test, canInferOnUserContext) {
 
     auto blob = FuncTestUtils::createAndFillBlob(net.getInputsInfo().begin()->second->getTensorDesc());
 
-    auto ie = InferenceEngine::Core();
-    auto exec_net_regular = ie.LoadNetwork(net, CommonTestUtils::DEVICE_GPU);
+    auto ie = PluginCache::get().ie();
+    auto exec_net_regular = ie->LoadNetwork(net, CommonTestUtils::DEVICE_GPU);
 
     // regular inference
     auto inf_req_regular = exec_net_regular.CreateInferRequest();
@@ -111,8 +110,8 @@ TEST_F(RemoteBlob_Test, canInferOnUserContext) {
 
     // inference using remote blob
     auto ocl_instance = std::make_shared<OpenCL>();
-    auto remote_context = make_shared_context(ie, CommonTestUtils::DEVICE_GPU, ocl_instance->_context.get());
-    auto exec_net_shared = ie.LoadNetwork(net, remote_context);
+    auto remote_context = make_shared_context(*ie, CommonTestUtils::DEVICE_GPU, ocl_instance->_context.get());
+    auto exec_net_shared = ie->LoadNetwork(net, remote_context);
     auto inf_req_shared = exec_net_shared.CreateInferRequest();
     inf_req_shared.SetBlob(net.getInputsInfo().begin()->first, fakeImageData);
 
@@ -214,4 +213,4 @@ TEST_P(TwoNets_Test, canInferTwoExecNets) {
 
 const std::vector<size_t> num_strems{1, 2};
 
-INSTANTIATE_TEST_CASE_P(RemoteBlob, TwoNets_Test, ::testing::ValuesIn(num_strems), TwoNets_Test::getTestCaseName);
+INSTANTIATE_TEST_CASE_P(smoke_RemoteBlob, TwoNets_Test, ::testing::ValuesIn(num_strems), TwoNets_Test::getTestCaseName);

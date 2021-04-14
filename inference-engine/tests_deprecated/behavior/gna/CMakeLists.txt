@@ -1,5 +1,4 @@
-# Copyright (C) 2018-2020 Intel Corporation
-#
+# Copyright (C) 2018-2021 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 
@@ -21,9 +20,6 @@ source_group("include" FILES ${TEST_INCLUDE})
 add_executable(${TARGET_NAME}
         ${TEST_SRC}
         ${TEST_INCLUDE})
-
-target_compile_definitions(${TARGET_NAME} PRIVATE
-        INSTANTIATE_TESTS=1)
 
 target_link_libraries(${TARGET_NAME} PRIVATE IEBehaviorSharedTests)
 

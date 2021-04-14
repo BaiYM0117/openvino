@@ -1,7 +1,6 @@
-// Copyright (C) 2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
-
 
 #pragma once
 
@@ -12,12 +11,16 @@
 #include <unordered_map>
 
 #include <ie_common.h>
-#include <ie_profiling.hpp>
 #include <cpp_interfaces/impl/ie_infer_request_internal.hpp>
 #include <cpp_interfaces/impl/ie_executable_network_internal.hpp>
 #include <threading/ie_itask_executor.hpp>
+#include <openvino/itt.hpp>
+
+#include <ngraph/runtime/tensor.hpp>
+#include <executable.hpp>
 
 #include "template_config.hpp"
+
 
 namespace TemplatePlugin {
 
@@ -34,7 +37,7 @@ public:
     ~TemplateInferRequest() override;
 
     void InferImpl() override;
-    void GetPerformanceCounts(std::map<std::string, InferenceEngine::InferenceEngineProfileInfo>& perfMap) const override;
+    std::map<std::string, InferenceEngine::InferenceEngineProfileInfo> GetPerformanceCounts() const override;
 
     // pipeline methods-stages which are used in async infer request implementation and assigned to particular executor
     void inferPreprocess();
@@ -42,12 +45,9 @@ public:
     void waitPipeline();
     void inferPostprocess();
 
-    std::shared_ptr<ExecutableNetwork>                      _executableNetwork;
-
 private:
     void allocateDeviceBuffers();
-    void allocateInputBlobs();
-    void allocateOutputBlobs();
+    void allocateBlobs();
 
     enum {
         Preprocess,
@@ -57,17 +57,18 @@ private:
         numOfStages
     };
 
-    std::array<InferenceEngine::ProfilingTask, numOfStages> _profilingTask;
+    std::shared_ptr<ExecutableNetwork>                      _executableNetwork;
+    std::array<openvino::itt::handle_t, numOfStages>        _profilingTask;
+    // for performance counters
+    std::array<std::chrono::duration<float, std::micro>, numOfStages>   _durations;
 
-    InferenceEngine::BlobMap                                _inputsNCHW;
-    InferenceEngine::BlobMap                                _outputsNCHW;
+    InferenceEngine::BlobMap                                _networkOutputBlobs;
+    ngraph::ParameterVector                                 _parameters;
+    ngraph::ResultVector                                    _results;
 
-    // for performance counts
-    double                                                  _inputPreprocessTime   = 0.0;
-    double                                                  _inputTransferTime     = 0.0;
-    double                                                  _executeTime           = 0.0;
-    double                                                  _outputTransferTime    = 0.0;
-    double                                                  _outputPostProcessTime = 0.0;
+    std::vector<std::shared_ptr<ngraph::runtime::Tensor>>   _inputTensors;
+    std::vector<std::shared_ptr<ngraph::runtime::Tensor>>   _outputTensors;
+    std::shared_ptr<ngraph::runtime::Executable>            _executable;
 };
 // ! [infer_request:header]
 

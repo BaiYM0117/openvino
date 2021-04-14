@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -120,8 +120,8 @@ INSTANTIATE_TEST_CASE_P(simple_ncdhw_max_userpad,
 // HACK: Exclude "same_upper" with excludePad=false case,
 //       as 2D pool for Myriad seems to always exclude pad
 //
-// CVS-25902 does software 2D avg pooling for Myriad support exclude-pad
-// CVS-15146 HW AvgPool doesn't support excludePad parameter
+// Issue-25902 does software 2D avg pooling for Myriad support exclude-pad
+// Issue-15146 HW AvgPool doesn't support excludePad parameter
 //----------------------------------------------------------------------
 
 INSTANTIATE_TEST_CASE_P(simple_ncdhw_avg_autopad_1,
@@ -289,8 +289,8 @@ INSTANTIATE_TEST_CASE_P(simple_nchw_max_userpad,
 // HACK: Exclude "same_upper" with excludePad=false case,
 //       as 2D pool for Myriad seems to always exclude pad
 //
-// CVS-25902 does software 2D avg pooling for Myriad support exclude-pad
-// CVS-15146 HW AvgPool doesn't support excludePad parameter
+// Issue-25902 does software 2D avg pooling for Myriad support exclude-pad
+// Issue-15146 HW AvgPool doesn't support excludePad parameter
 //----------------------------------------------------------------------
 
 INSTANTIATE_TEST_CASE_P(simple_nchw_avg_autopad_1,

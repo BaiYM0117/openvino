@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -29,17 +29,9 @@ namespace InferenceEngine {
 
 /**
  * @brief This class is the main interface to build and parse a network from a given IR
- *
- * All methods here do not throw exceptions and return a StatusCode and ResponseDesc object.
- * Alternatively, to use methods that throw exceptions, refer to the CNNNetReader wrapper class.
  */
 class IRReader: public IReader {
 public:
-    IRReader() = default;
-
-    void Release() noexcept override {
-        delete this;
-    }
     /**
      * @brief Checks that reader supports format of the model
      * @param model stream with model
@@ -57,12 +49,12 @@ public:
     /**
      * @brief Reads the model to CNNNetwork
      * @param model stream with model
-     * @param weights stream with binary data
+     * @param weights blob with binary data
      * @param exts vector with extensions
      *
      * @return CNNNetwork
      */
-    CNNNetwork read(std::istream& model, std::istream& weights, const std::vector<IExtensionPtr>& exts) const override;
+    CNNNetwork read(std::istream& model, const Blob::CPtr& weights, const std::vector<IExtensionPtr>& exts) const override;
 
     std::vector<std::string> getDataFileExtensions() const override {
         return {"bin"};

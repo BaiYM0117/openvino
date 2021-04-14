@@ -1,4 +1,4 @@
-// Copyright (C) 2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -11,7 +11,7 @@ namespace {
 
 class myriadCorrectStreamsConfiguration_nightly : public vpuLayersTests, public testing::WithParamInterface<std::uint32_t> {};
 TEST_P(myriadCorrectStreamsConfiguration_nightly, InfersWithConfiguredStreams) {
-    _config[VPU_MYRIAD_CONFIG_KEY(THROUGHPUT_STREAMS)] = std::to_string(GetParam());
+    _config[InferenceEngine::MYRIAD_THROUGHPUT_STREAMS] = std::to_string(GetParam());
     _irVersion = IRVersion::v10;
 
     auto fn_ptr = ngraph::builder::subgraph::makeSplitMultiConvConcat();

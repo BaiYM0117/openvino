@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -10,21 +10,22 @@
 #include <memory>
 #include "ie_extension.h"
 #include <condition_variable>
-#include "functional_test_utils/layer_test_utils.hpp"
+#include "shared_test_classes/base/layer_test_utils.hpp"
 #include "ngraph_functions/utils/ngraph_helpers.hpp"
 #include "ngraph_functions/builders.hpp"
 #include <vpu/vpu_plugin_config.hpp>
-#include <vpu/private_plugin_config.hpp>
 #include <gna/gna_config.hpp>
 #include <multi-device/multi_device_config.hpp>
 #include <ie_core.hpp>
 #include <threading/ie_executor_manager.hpp>
-#include <functional_test_utils/behavior_test_utils.hpp>
+#include <base/behavior_test_utils.hpp>
 #include "common_test_utils/common_utils.hpp"
 #include "functional_test_utils/plugin_cache.hpp"
 #include "functional_test_utils/blob_utils.hpp"
 #include "ngraph_functions/subgraph_builders.hpp"
 
+namespace BehaviorTestsDefinitions {
+// TODO: rename to SetupInferWithConfigTests
 using InferConfigTests = BehaviorTestsUtils::BehaviorTestsBasic;
 
 TEST_P(InferConfigTests, canSetExclusiveAsyncRequests) {
@@ -82,6 +83,7 @@ TEST_P(InferConfigTests, withoutExclusiveAsyncRequests) {
     }
 }
 
+// TODO: rename to InferWithConfigTests
 using InferConfigInTests = BehaviorTestsUtils::BehaviorTestsBasic;
 
 TEST_P(InferConfigInTests, CanInferWithConfig) {
@@ -94,3 +96,4 @@ TEST_P(InferConfigInTests, CanInferWithConfig) {
     auto req = execNet.CreateInferRequest();
     ASSERT_NO_THROW(req.Infer());
 }
+}  // namespace BehaviorTestsDefinitions

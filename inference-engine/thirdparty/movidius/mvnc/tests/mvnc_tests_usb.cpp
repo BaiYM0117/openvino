@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -28,7 +28,7 @@ TEST_F(MvncOpenUSBDevice, ShouldOpenDeviceAfterChangeConnectTimeoutFromZero) {
 
     ASSERT_NO_ERROR(ncSetDeviceConnectTimeout(0));
     ASSERT_ERROR(ncDeviceOpen(&deviceHandle, deviceDesc, m_ncDeviceOpenParams));
-    std::this_thread::sleep_for(3_sec);
+    std::this_thread::sleep_for(5_sec);
     ASSERT_NO_ERROR(ncDeviceResetAll());
 
     ASSERT_NO_ERROR(ncSetDeviceConnectTimeout(30));

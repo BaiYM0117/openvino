@@ -1,18 +1,5 @@
-"""
- Copyright (C) 2018-2020 Intel Corporation
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
-      http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
-"""
+# Copyright (C) 2018-2021 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
 
 import numpy as np
 
@@ -33,8 +20,12 @@ class Select(Op):
             'out_ports_count': 1,
             'infer': __class__.infer,
             'type_infer': __class__.type_infer,
+            'auto_broadcast': 'numpy'
         }
         super().__init__(graph, mandatory_props, attrs)
+
+    def backend_attrs(self):
+        return ['auto_broadcast']
 
     @staticmethod
     def infer(node: Node):
@@ -49,14 +40,14 @@ class Select(Op):
         node.out_port(0).data.set_shape(broadcast_shape(a_shape, b_shape))
         # Case with unknown condition
         if condition_value is not None:
+            output_value = np.where(condition_value, resulting_tensors[0], resulting_tensors[1])
             if condition_value.size != 1:
-                output_value = np.where(condition_value, resulting_tensors[0], resulting_tensors[1])
                 if np.any(output_value == None):
                     # If any element of output value is None that means that we use the value from 'then' or 'else' tensor
                     # which is not defined, this means that we cannot perform value propagation.
                     output_value = None
             else:
-                output_value = resulting_tensors[not np.bool(condition_value.item(0))]
+                output_value = np.array(output_value, dtype=resulting_tensors[not np.bool(condition_value.item(0))].dtype)
 
             if output_value is not None:
                 node.out_port(0).data.set_value(np.array(output_value))

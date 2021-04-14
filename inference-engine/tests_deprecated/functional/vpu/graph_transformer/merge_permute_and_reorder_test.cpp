@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -8,7 +8,6 @@
 #include <vpu/compile_env.hpp>
 #include <vpu/frontend/frontend.hpp>
 #include <vpu/utils/logger.hpp>
-#include <cpp_interfaces/base/ie_inference_plugin_api.hpp>
 
 using namespace InferenceEngine;
 using namespace vpu;

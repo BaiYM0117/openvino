@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -6,10 +6,12 @@
 #include <gmock/gmock-spec-builders.h>
 
 #include <ie_version.hpp>
-#include <cpp_interfaces/base/ie_plugin_base.hpp>
+#include <ie_plugin_cpp.hpp>
+
+#include <cpp_interfaces/base/ie_infer_async_request_base.hpp>
+#include <cpp_interfaces/interface/ie_iexecutable_network_internal.hpp>
 
 #include "unit_test_utils/mocks/mock_not_empty_icnn_network.hpp"
-#include "unit_test_utils/mocks/cpp_interfaces/mock_plugin_impl.hpp"
 #include "unit_test_utils/mocks/cpp_interfaces/impl/mock_inference_plugin_internal.hpp"
 #include "unit_test_utils/mocks/cpp_interfaces/impl/mock_executable_thread_safe_default.hpp"
 #include "unit_test_utils/mocks/cpp_interfaces/interface/mock_iinfer_request_internal.hpp"
@@ -21,14 +23,12 @@ using namespace InferenceEngine::details;
 
 class InferenceEnginePluginInternalTest : public ::testing::Test {
 protected:
-    IE_SUPPRESS_DEPRECATED_START
     shared_ptr<IInferencePlugin> plugin;
-    IE_SUPPRESS_DEPRECATED_END
     shared_ptr<MockInferencePluginInternal> mock_plugin_impl;
     shared_ptr<MockExecutableNetworkInternal> mockExeNetworkInternal;
     shared_ptr<MockExecutableNetworkThreadSafe> mockExeNetworkTS;
     shared_ptr<MockInferRequestInternal> mockInferRequestInternal;
-    MockNotEmptyICNNNetwork mockNotEmptyNet;
+    std::shared_ptr<MockNotEmptyICNNNetwork> mockNotEmptyNet = std::make_shared<MockNotEmptyICNNNetwork>();
     std::string pluginId;
 
     ResponseDesc dsc;
@@ -45,28 +45,23 @@ protected:
         pluginId = "TEST";
         mock_plugin_impl.reset(new MockInferencePluginInternal());
         mock_plugin_impl->SetName(pluginId);
-        plugin = details::shared_from_irelease(make_ie_compatible_plugin({{2, 1}, "test", "version"}, mock_plugin_impl));
+        plugin = std::static_pointer_cast<IInferencePlugin>(mock_plugin_impl);
         mockExeNetworkInternal = make_shared<MockExecutableNetworkInternal>();
-        mockExeNetworkInternal->SetPointerToPluginInternal(mock_plugin_impl);
+        mockExeNetworkInternal->SetPointerToPlugin(mock_plugin_impl);
     }
 
     void getInferRequestWithMockImplInside(IInferRequest::Ptr &request) {
-        IExecutableNetwork::Ptr exeNetwork;
+        IExecutableNetworkInternal::Ptr exeNetwork;
         InputsDataMap inputsInfo;
-        mockNotEmptyNet.getInputsInfo(inputsInfo);
+        mockNotEmptyNet->getInputsInfo(inputsInfo);
         OutputsDataMap outputsInfo;
-        mockNotEmptyNet.getOutputsInfo(outputsInfo);
+        mockNotEmptyNet->getOutputsInfo(outputsInfo);
         mockInferRequestInternal = make_shared<MockInferRequestInternal>(inputsInfo, outputsInfo);
         mockExeNetworkTS = make_shared<MockExecutableNetworkThreadSafe>();
         EXPECT_CALL(*mock_plugin_impl.get(), LoadExeNetworkImpl(_, _)).WillOnce(Return(mockExeNetworkTS));
         EXPECT_CALL(*mockExeNetworkTS.get(), CreateInferRequestImpl(_, _)).WillOnce(Return(mockInferRequestInternal));
-        IE_SUPPRESS_DEPRECATED_START
-        sts = plugin->LoadNetwork(exeNetwork, mockNotEmptyNet, {}, &dsc);
-        IE_SUPPRESS_DEPRECATED_END
-        ASSERT_EQ((int) StatusCode::OK, sts) << dsc.msg;
-        ASSERT_NE(exeNetwork, nullptr) << dsc.msg;
-        sts = exeNetwork->CreateInferRequest(request, &dsc);
-        ASSERT_EQ((int) StatusCode::OK, sts) << dsc.msg;
+        ASSERT_NO_THROW(exeNetwork = plugin->LoadNetwork(InferenceEngine::CNNNetwork(mockNotEmptyNet), {}));
+        ASSERT_NO_THROW(request = exeNetwork->CreateInferRequest());
     }
 };
 
@@ -78,67 +73,72 @@ TEST_F(InferenceEnginePluginInternalTest, failToSetBlobWithInCorrectName) {
     Blob::Ptr inBlob = make_shared_blob<float>({ Precision::FP32, {1, 1, 1, 1}, NCHW });
     inBlob->allocate();
     string inputName = "not_input";
-    std::string refError = NOT_FOUND_str + "Failed to find input or output with name: \'" + inputName + "\'";
+    std::string refError = "[ NOT_FOUND ] Failed to find input or output with name: \'" + inputName + "\'";
     IInferRequest::Ptr inferRequest;
     getInferRequestWithMockImplInside(inferRequest);
 
     ASSERT_NO_THROW(sts = inferRequest->SetBlob(inputName.c_str(), inBlob, &dsc));
-    ASSERT_EQ(StatusCode::GENERAL_ERROR, sts);
-    dsc.msg[refError.length()] = '\0';
-    ASSERT_EQ(refError, dsc.msg);
+    ASSERT_EQ(StatusCode::NOT_FOUND, sts);
+    ASSERT_TRUE(std::string{dsc.msg}.find(refError) != std::string::npos)
+        << "\tExpected: " << refError
+        << "\n\tActual: " << dsc.msg;
 }
 
-TEST_F(InferenceEnginePluginInternalTest, failToSetBlobWithNullPtr) {
+TEST_F(InferenceEnginePluginInternalTest, failToSetBlobWithEmptyName) {
     Blob::Ptr inBlob = make_shared_blob<float>({ Precision::FP32, {}, NCHW });
     inBlob->allocate();
     string inputName = "not_input";
-    std::string refError = NOT_FOUND_str + "Failed to set blob with empty name";
+    std::string refError = "[ NOT_FOUND ] Failed to set blob with empty name";
     IInferRequest::Ptr inferRequest;
     getInferRequestWithMockImplInside(inferRequest);
 
-    ASSERT_NO_THROW(sts = inferRequest->SetBlob(nullptr, inBlob, &dsc));
-    ASSERT_EQ(StatusCode::GENERAL_ERROR, sts);
-    dsc.msg[refError.length()] = '\0';
-    ASSERT_EQ(refError, dsc.msg);
+    ASSERT_NO_THROW(sts = inferRequest->SetBlob("", inBlob, &dsc));
+    ASSERT_EQ(StatusCode::NOT_FOUND, sts);
+    ASSERT_TRUE(std::string{dsc.msg}.find(refError) != std::string::npos)
+        << "\tExpected: " << refError
+        << "\n\tActual: " << dsc.msg;
 }
 
 TEST_F(InferenceEnginePluginInternalTest, failToSetNullPtr) {
     string inputName = MockNotEmptyICNNNetwork::INPUT_BLOB_NAME;
-    std::string refError = NOT_ALLOCATED_str + "Failed to set empty blob with name: \'" + inputName + "\'";
+    std::string refError = "[ NOT_ALLOCATED ] Failed to set empty blob with name: \'" + inputName + "\'";
     IInferRequest::Ptr inferRequest;
     getInferRequestWithMockImplInside(inferRequest);
     Blob::Ptr inBlob = nullptr;
 
     ASSERT_NO_THROW(sts = inferRequest->SetBlob(inputName.c_str(), inBlob, &dsc));
-    ASSERT_EQ(StatusCode::GENERAL_ERROR, sts);
-    dsc.msg[refError.length()] = '\0';
-    ASSERT_EQ(refError, dsc.msg);
+    ASSERT_EQ(StatusCode::NOT_ALLOCATED, sts);
+    ASSERT_TRUE(std::string{dsc.msg}.find(refError) != std::string::npos)
+        << "\tExpected: " << refError
+        << "\n\tActual: " << dsc.msg;
 }
 
 TEST_F(InferenceEnginePluginInternalTest, failToSetEmptyBlob) {
     Blob::Ptr inBlob;
     string inputName = MockNotEmptyICNNNetwork::INPUT_BLOB_NAME;
-    std::string refError = NOT_ALLOCATED_str + "Failed to set empty blob with name: \'" + inputName + "\'";
+    std::string refError = "[ NOT_ALLOCATED ] Failed to set empty blob with name: \'" + inputName + "\'";
     IInferRequest::Ptr inferRequest;
     getInferRequestWithMockImplInside(inferRequest);
 
     ASSERT_NO_THROW(sts = inferRequest->SetBlob(inputName.c_str(), inBlob, &dsc));
-    ASSERT_EQ(StatusCode::GENERAL_ERROR, sts);
-    dsc.msg[refError.length()] = '\0';
-    ASSERT_EQ(refError, dsc.msg);
+    ASSERT_EQ(StatusCode::NOT_ALLOCATED, sts);
+    ASSERT_TRUE(std::string{dsc.msg}.find(refError) != std::string::npos)
+        << "\tExpected: " << refError
+        << "\n\tActual: " << dsc.msg;
 }
 
 TEST_F(InferenceEnginePluginInternalTest, failToSetNotAllocatedBlob) {
     string inputName = MockNotEmptyICNNNetwork::INPUT_BLOB_NAME;
-    std::string refError = "Input data was not allocated. Input name: \'" + inputName + "\'";
+    std::string refError = "[ NOT_ALLOCATED ] Input data was not allocated. Input name: \'" + inputName + "\'";
     IInferRequest::Ptr inferRequest;
     getInferRequestWithMockImplInside(inferRequest);
     Blob::Ptr blob = make_shared_blob<float>({ Precision::FP32, {}, NCHW });
 
     ASSERT_NO_THROW(sts = inferRequest->SetBlob(inputName.c_str(), blob, &dsc));
-    ASSERT_EQ(StatusCode::GENERAL_ERROR, sts);
-    dsc.msg[refError.length()] = '\0';
-    ASSERT_EQ(refError, dsc.msg);
+    ASSERT_EQ(StatusCode::NOT_ALLOCATED, sts);
+    ASSERT_TRUE(std::string{dsc.msg}.find(refError) != std::string::npos)
+        << "\tExpected: " << refError
+        << "\n\tActual: " << dsc.msg;
 }
 
 TEST_F(InferenceEnginePluginInternalTest, executableNetworkInternalExportsMagicAndName) {
@@ -163,3 +163,39 @@ TEST_F(InferenceEnginePluginInternalTest, pluginInternalEraseMagicAndNameWhenImp
     mock_plugin_impl->importedString = {};
 }
 
+
+TEST(InferencePluginTests, throwsOnNullptrCreation) {
+    InferenceEnginePluginPtr nulptr;
+    InferencePlugin plugin;
+    ASSERT_THROW(plugin = InferencePlugin(nulptr), Exception);
+}
+
+TEST(InferencePluginTests, throwsOnUninitializedGetVersion) {
+    InferencePlugin plg;
+    ASSERT_THROW(plg.GetVersion(), Exception);
+}
+
+TEST(InferencePluginTests, throwsOnUninitializedLoadNetwork) {
+    InferencePlugin plg;
+    ASSERT_THROW(plg.LoadNetwork(CNNNetwork(), {}), Exception);
+}
+
+TEST(InferencePluginTests, throwsOnUninitializedImportNetwork) {
+    InferencePlugin plg;
+    ASSERT_THROW(plg.ImportNetwork({}, {}), Exception);
+}
+
+TEST(InferencePluginTests, throwsOnUninitializedAddExtension) {
+    InferencePlugin plg;
+    ASSERT_THROW(plg.AddExtension(IExtensionPtr()), Exception);
+}
+
+TEST(InferencePluginTests, throwsOnUninitializedSetConfig) {
+    InferencePlugin plg;
+    ASSERT_THROW(plg.SetConfig({{}}), Exception);
+}
+
+TEST(InferencePluginTests, nothrowsUninitializedCast) {
+    InferencePlugin plg;
+    ASSERT_NO_THROW(auto plgPtr = static_cast<InferenceEnginePluginPtr>(plg));
+}

@@ -1,23 +1,12 @@
-//*****************************************************************************
-// Copyright 2017-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//*****************************************************************************
 
 #include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
+#include <thread>
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -25,6 +14,9 @@
 #include "ngraph/graph_util.hpp"
 #include "ngraph/ngraph.hpp"
 #include "ngraph/variant.hpp"
+#include "ngraph/opsets/opset.hpp"
+
+NGRAPH_SUPPRESS_DEPRECATED_START
 
 using namespace std;
 using namespace ngraph;
@@ -33,16 +25,16 @@ TEST(op, is_op)
 {
     auto arg0 = make_shared<op::Parameter>(element::f32, Shape{1});
     ASSERT_NE(nullptr, arg0);
-    EXPECT_TRUE(arg0->is_parameter());
+    EXPECT_TRUE(op::is_parameter(arg0));
 }
 
 TEST(op, is_parameter)
 {
     auto arg0 = make_shared<op::Parameter>(element::f32, Shape{1});
     ASSERT_NE(nullptr, arg0);
-    auto t0 = make_shared<op::Add>(arg0, arg0);
+    auto t0 = make_shared<op::v1::Add>(arg0, arg0);
     ASSERT_NE(nullptr, t0);
-    EXPECT_FALSE(t0->is_parameter());
+    EXPECT_FALSE(op::is_parameter(t0));
 }
 
 TEST(op, provenance_tag)
@@ -58,6 +50,35 @@ TEST(op, provenance_tag)
     auto tags = node->get_provenance_tags();
     ASSERT_TRUE(tags.find(tag1) == tags.end());
     ASSERT_TRUE(tags.find(tag2) != tags.end());
+}
+
+TEST(op, opset_multi_thread) {
+    auto doTest = [&](std::function<const ngraph::OpSet&()> fun) {
+        std::atomic<const ngraph::OpSet*> opset {nullptr};
+        std::atomic_bool failed {false};
+        auto threadFun = [&] () {
+            const ngraph::OpSet* op = &fun();
+            const ngraph::OpSet* current = opset;
+            do {
+                if (current != nullptr && current != op) {
+                    failed = true;
+                    break;
+                }
+            } while (opset.compare_exchange_strong(op, current));
+        };
+        std::thread t1 {threadFun};
+        std::thread t2 {threadFun};
+        t1.join();
+        t2.join();
+        ASSERT_FALSE(failed);
+    };
+    doTest(ngraph::get_opset1);
+    doTest(ngraph::get_opset2);
+    doTest(ngraph::get_opset3);
+    doTest(ngraph::get_opset4);
+    doTest(ngraph::get_opset5);
+    doTest(ngraph::get_opset6);
+    doTest(ngraph::get_opset7);
 }
 
 struct Ship
@@ -109,21 +130,3 @@ TEST(op, variant)
     Ship& node_ship = as_type_ptr<VariantWrapper<Ship>>(node_var_ship)->get();
     EXPECT_EQ(&node_ship, &ship);
 }
-
-// TODO: Need to mock Node, Op etc to be able to unit test functions like replace_node().
-// Mocking them directly isn't possible because google test requires methods to be
-// non-virtual. For non-virtual methods we will need to templatize these classes and call using
-// different template argument between testing and production.
-/*
-TEST(op, provenance_replace_node)
-{
-    class MockOp: public op::Op
-    {
-        MOCK_CONST_METHOD1(copy_with_new_args, std::shared_ptr<Node>(const NodeVector& new_args));
-        MOCK_CONST_METHOD1(get_users, NodeVector (bool check_is_used)); // This can't be mocked as
-                                                                        // it's non-virtual
-    };
-
-    ::testing::NiceMock<MockOp> mock_op;
-}
-*/

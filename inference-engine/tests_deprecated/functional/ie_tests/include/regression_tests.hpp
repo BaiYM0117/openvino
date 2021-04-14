@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -123,7 +123,7 @@ class ModelSelector {
     }
 
 
-    Model model, statFile;
+    Model model;
     RegressionConfig config;
     EMean isMean = eValues;
     EPrecision precision = eq78;
@@ -149,16 +149,6 @@ class ModelSelector {
                       << model.fileName() << "_" << precision << isMean << isGroup << "." << model.extension();
 
         return path_to_model.str();
-    }
-
-    std::string prepareStatMatching() {
-        if (statFile.fileName() == "") return "";
-        ModelsPath path_to_stat;
-        path_to_stat << kPathSeparator
-                      << statFile.folderName() << kPathSeparator
-                      << statFile.fileName();
-
-        return path_to_stat.str();
     }
 
     ModelSelector() = default;
@@ -239,7 +229,7 @@ class ModelSelector {
     /// @breif - tile last batch
     ModelSelector &onN_infers(int nTimesCopyInputImages) {
         if (config._paths_to_images.size() != config.batchSize) {
-            THROW_IE_EXCEPTION << "number of input images:"
+            IE_THROW() << "number of input images:"
                                << config._paths_to_images.size() << " not equal to batch size: " << config.batchSize;
         }
         auto first_image =  config._paths_to_images.end();
@@ -357,7 +347,7 @@ class ModelSelector {
         config.batchSize = nBatchSize;
         // assumption made that inputs already gets provided to matcher
         if (config._paths_to_images.empty() && needInput()) {
-            THROW_IE_EXCEPTION << "withBatch token should follow after setting up inputs";
+            IE_THROW() << "withBatch token should follow after setting up inputs";
         }
         if (config._paths_to_images.size() < nBatchSize) {
             tile(nBatchSize - config._paths_to_images.size());
@@ -511,14 +501,12 @@ class ModelSelector {
             config.referenceOutput.push_back(v);
         }
         config._path_to_models = prepareModelMatching();
-        config._stat_file = prepareStatMatching();
         return M(config);
     }
 
     M to(Blob::Ptr rhs) {
         config.outputBlob = rhs;
         config._path_to_models = prepareModelMatching();
-        config._stat_file = prepareStatMatching();
         return M(config);
     }
 
@@ -533,7 +521,6 @@ class ModelSelector {
             }
         }
         config._path_to_models = prepareModelMatching();
-        config._stat_file = prepareStatMatching();
         return M(config);
     }
 
@@ -548,14 +535,12 @@ class ModelSelector {
         config.meanRelativeError = meanRelativeError;
         config.maxRelativeError = maxRelativeError;
         config._path_to_models = prepareModelMatching();
-        config._stat_file = prepareStatMatching();
         return M(config);
     }
 
     void equalToReferenceWithDelta(double nearValue) {
         config.nearValue = nearValue;
         config._path_to_models = prepareModelMatching();
-        config._stat_file = prepareStatMatching();
         M(config).to(getReferenceResultsLabel());
     }
 
@@ -565,14 +550,12 @@ class ModelSelector {
             config.referenceOutput.push_back(v);
         }
         config._path_to_models = prepareModelMatching();
-        config._stat_file = prepareStatMatching();
         return M(config, true);
     }
 
     // place holder to run the matcher without providing any reference
     void possible() {
         config._path_to_models = prepareModelMatching();
-        config._stat_file = prepareStatMatching();
         auto tmp = M(config);
         ASSERT_NO_FATAL_FAILURE(tmp.match());
     }

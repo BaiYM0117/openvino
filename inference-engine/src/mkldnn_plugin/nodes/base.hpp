@@ -1,11 +1,11 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
 #pragma once
 
 #include <ie_iextension.h>
-#include "ie_util_internal.hpp"
+#include <legacy/ie_util_internal.hpp>
 #include "nodes/list.hpp"
 
 #include <string>
@@ -60,12 +60,16 @@ protected:
         explicit DataConfigurator(ConfLayout l):
             layout(l) {}
 
-        DataConfigurator(ConfLayout l, bool constant, int inplace = -1):
-            layout(l), constant(constant), inplace(inplace) {}
+        DataConfigurator(ConfLayout l, bool constant, int inplace = -1, Precision::ePrecision prc = Precision::UNSPECIFIED):
+            layout(l), constant(constant), inplace(inplace), prc(prc) {}
+
+        DataConfigurator(ConfLayout l, Precision::ePrecision prc):
+            layout(l), prc(prc) {}
 
         ConfLayout layout;
         bool constant = false;
         int inplace = -1;
+        Precision::ePrecision prc = Precision::UNSPECIFIED;     // by default use the layer precision
     };
 
     void addConfig(const CNNLayer* layer, std::vector<DataConfigurator> in_l,
@@ -73,10 +77,10 @@ protected:
         LayerConfig config;
 
         if (in_l.size() != layer->insData.size())
-            THROW_IE_EXCEPTION << "Incorrect number of input edges for layer " << layer->name << ". Expected " << layer->insData.size()
+            IE_THROW() << "Incorrect number of input edges for layer " << layer->name << ". Expected " << layer->insData.size()
                 << " but layout specification provided for " << in_l.size();
         if (out_l.size() != layer->outData.size())
-            THROW_IE_EXCEPTION << "Incorrect number of output edges for layer " << layer->name << ". Expected " << layer->outData.size()
+            IE_THROW() << "Incorrect number of output edges for layer " << layer->name << ". Expected " << layer->outData.size()
                 << " but layout specification provided for " << out_l.size();
 
         // Fill tensor parameters into config
@@ -86,7 +90,7 @@ protected:
                     return 0;
                 return (a + b - 1) / b;
             };
-            if (!data) THROW_IE_EXCEPTION << "Cannot get input data!";
+            if (!data) IE_THROW() << "Cannot get input data!";
 
             DataConfig dataConfig;
             dataConfig.inPlace = conf.inplace;
@@ -102,8 +106,8 @@ protected:
             const bool isInt8 = (data->getPrecision() == Precision::I8 || data->getPrecision() == Precision::U8);
 
             if (conf.layout == ConfLayout::BLK8 || conf.layout == ConfLayout::BLK16) {
-                if (data_dims.size() < 4 && data_dims.size() > 5)
-                    THROW_IE_EXCEPTION << "Inapplicable blocking layout."
+                if (data_dims.size() < 4 || data_dims.size() > 5)
+                    IE_THROW() << "Inapplicable blocking layout."
                         << "Tensor should be 4D or 5D.";
 
                 int blk_size = conf.layout == ConfLayout::BLK8 ? 8 : 16;
@@ -124,14 +128,7 @@ protected:
                 conf.layout = ConfLayout::PLN;
             }
 
-            // All extension layers support only FP32 precision!
-            // fixing of BF16 precisions where they are - layers naturally support only FP32
-            // if we see BF16, that means another floating point format which will be converted by reorder
-            // added by current mkl-dnn cpu plugin when it figure out diff in data types on input and output of edges
-            InferenceEngine::Precision precision = data_desc.getPrecision();
-            if (precision == Precision::BF16) {
-                precision = Precision::FP32;
-            }
+            InferenceEngine::Precision precision = (conf.prc == Precision::UNSPECIFIED) ? data_desc.getPrecision() : Precision(conf.prc);
             if (conf.layout == ConfLayout::ANY) {
                 dataConfig.desc = TensorDesc(precision, data_dims, InferenceEngine::Layout::ANY);
             } else {
@@ -153,8 +150,6 @@ protected:
     std::vector<LayerConfig> confs;
 };
 
-IE_SUPPRESS_DEPRECATED_START
-
 template <class IMPL>
 class ImplFactory : public ILayerImplFactory {
 public:
@@ -174,21 +169,10 @@ protected:
     InferenceEngine::CNNLayerPtr cnnLayer;
 };
 
-IE_SUPPRESS_DEPRECATED_END
-
-template <typename __prim>
-inline void extRegister(MKLDNNExtensions * extInstance, const char * __type) {
-    IE_SUPPRESS_DEPRECATED_START
-    extInstance->AddExt(__type,
-                [](const CNNLayer* layer) -> InferenceEngine::ILayerImplFactory* {
-                    return new __prim(layer);
-                });
-    IE_SUPPRESS_DEPRECATED_END
-}
-
 #define REG_FACTORY_FOR(__prim, __type) \
     void __prim ## __type(MKLDNNExtensions * extInstance) { \
-        extRegister<ImplFactory<__prim>>(extInstance, #__type); \
+        using namespace MKLDNNPlugin; \
+        extInstance->layersFactory.registerNodeIfRequired(MKLDNNPlugin, __type, OV_PP_TOSTRING(__type), ImplFactory<__prim>); \
     }
 
 }  // namespace Cpu

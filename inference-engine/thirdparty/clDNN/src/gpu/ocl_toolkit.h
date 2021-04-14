@@ -1,18 +1,6 @@
-/*
-// Copyright (c) 2016 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-*/
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma once
@@ -39,7 +27,7 @@ namespace gpu {
 typedef CL_API_ENTRY cl_command_queue(CL_API_CALL* pfn_clCreateCommandQueueWithPropertiesINTEL)(
     cl_context context,
     cl_device_id device,
-    const cl_queue_properties* properties,
+    const cl_queue_properties_khr* properties,
     cl_int* errcodeRet);
 
 class ocl_error : public std::runtime_error {
@@ -62,7 +50,6 @@ protected:
 
 struct gpu_program_state {
     kernels_cache _kernels_cache;
-    kernels_binaries_container _binaries;
 
     gpu_program_state(gpu_toolkit& context, uint32_t prog_id) :
         _kernels_cache(context, prog_id) {}
@@ -87,7 +74,6 @@ public:
     device_info_internal get_device_info() const { return _device->get_info(); }
     std::shared_ptr<kernel_selector::TuningCache> get_device_cache() const { return _device_cache; }
     kernels_cache& get_kernels_cache(uint32_t prog_id);
-    void store_binaries(kernels_binaries_vector binaries, uint32_t prog_id);
     bool get_serialization_flag() { return _serialize; }
     void set_serialization_flag(bool serialization_flag) { _serialize = serialization_flag; }
 
@@ -136,7 +122,6 @@ private:
     std::map<uint32_t, std::shared_ptr<gpu_program_state>> _program_states;
     std::map<uint32_t, gpu_queue> _command_queues_w;
     std::shared_ptr<kernel_selector::TuningCache> _device_cache;
-    kernels_binaries_container _binaries;
     bool _serialize = false;
 
     std::string _extensions;

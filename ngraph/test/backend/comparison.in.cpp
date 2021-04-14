@@ -1,18 +1,6 @@
-//*****************************************************************************
-// Copyright 2017-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//*****************************************************************************
 
 #include <algorithm>
 #include <cinttypes>
@@ -22,11 +10,9 @@
 #include <string>
 #include "gtest/gtest.h"
 
-#include "ngraph/autodiff/adjoints.hpp"
 #include "ngraph/log.hpp"
 #include "ngraph/ngraph.hpp"
 #include "ngraph/runtime/tensor.hpp"
-#include "ngraph/serializer.hpp"
 #include "runtime/backend.hpp"
 #include "util/all_close.hpp"
 #include "util/all_close_f.hpp"
@@ -45,7 +31,7 @@ NGRAPH_TEST(${BACKEND_NAME}, equal)
     Shape shape{2, 2, 2};
     auto A = make_shared<op::Parameter>(element::f32, shape);
     auto B = make_shared<op::Parameter>(element::f32, shape);
-    auto f = make_shared<Function>(make_shared<op::Equal>(A, B), ParameterVector{A, B});
+    auto f = make_shared<Function>(make_shared<op::v1::Equal>(A, B), ParameterVector{A, B});
 
     auto backend = runtime::Backend::create("${BACKEND_NAME}");
 
@@ -66,7 +52,7 @@ NGRAPH_TEST(${BACKEND_NAME}, notequal)
     Shape shape{2, 2, 2};
     auto A = make_shared<op::Parameter>(element::f32, shape);
     auto B = make_shared<op::Parameter>(element::f32, shape);
-    auto f = make_shared<Function>(make_shared<op::NotEqual>(A, B), ParameterVector{A, B});
+    auto f = make_shared<Function>(make_shared<op::v1::NotEqual>(A, B), ParameterVector{A, B});
 
     auto backend = runtime::Backend::create("${BACKEND_NAME}");
 
@@ -87,7 +73,7 @@ NGRAPH_TEST(${BACKEND_NAME}, greater)
     Shape shape{2, 2, 2};
     auto A = make_shared<op::Parameter>(element::f32, shape);
     auto B = make_shared<op::Parameter>(element::f32, shape);
-    auto f = make_shared<Function>(make_shared<op::Greater>(A, B), ParameterVector{A, B});
+    auto f = make_shared<Function>(make_shared<op::v1::Greater>(A, B), ParameterVector{A, B});
 
     auto backend = runtime::Backend::create("${BACKEND_NAME}");
 
@@ -108,7 +94,7 @@ NGRAPH_TEST(${BACKEND_NAME}, greater_int64)
     Shape shape{2, 2, 2};
     auto A = make_shared<op::Parameter>(element::i64, shape);
     auto B = make_shared<op::Parameter>(element::i64, shape);
-    auto f = make_shared<Function>(make_shared<op::Greater>(A, B), ParameterVector{A, B});
+    auto f = make_shared<Function>(make_shared<op::v1::Greater>(A, B), ParameterVector{A, B});
 
     auto backend = runtime::Backend::create("${BACKEND_NAME}");
 
@@ -129,7 +115,7 @@ NGRAPH_TEST(${BACKEND_NAME}, greatereq)
     Shape shape{2, 2, 2};
     auto A = make_shared<op::Parameter>(element::f32, shape);
     auto B = make_shared<op::Parameter>(element::f32, shape);
-    auto f = make_shared<Function>(make_shared<op::GreaterEq>(A, B), ParameterVector{A, B});
+    auto f = make_shared<Function>(make_shared<op::v1::GreaterEqual>(A, B), ParameterVector{A, B});
 
     auto backend = runtime::Backend::create("${BACKEND_NAME}");
 
@@ -150,7 +136,7 @@ NGRAPH_TEST(${BACKEND_NAME}, less)
     Shape shape{2, 2, 2};
     auto A = make_shared<op::Parameter>(element::f32, shape);
     auto B = make_shared<op::Parameter>(element::f32, shape);
-    auto f = make_shared<Function>(make_shared<op::Less>(A, B), ParameterVector{A, B});
+    auto f = make_shared<Function>(make_shared<op::v1::Less>(A, B), ParameterVector{A, B});
 
     auto backend = runtime::Backend::create("${BACKEND_NAME}");
 
@@ -171,7 +157,7 @@ NGRAPH_TEST(${BACKEND_NAME}, lesseq)
     Shape shape{2, 2, 2};
     auto A = make_shared<op::Parameter>(element::f32, shape);
     auto B = make_shared<op::Parameter>(element::f32, shape);
-    auto f = make_shared<Function>(make_shared<op::LessEq>(A, B), ParameterVector{A, B});
+    auto f = make_shared<Function>(make_shared<op::v1::LessEqual>(A, B), ParameterVector{A, B});
 
     auto backend = runtime::Backend::create("${BACKEND_NAME}");
 
@@ -192,7 +178,7 @@ NGRAPH_TEST(${BACKEND_NAME}, lesseq_int32)
     Shape shape{2, 2};
     auto A = make_shared<op::Parameter>(element::i32, shape);
     auto B = make_shared<op::Parameter>(element::i32, shape);
-    auto f = make_shared<Function>(make_shared<op::LessEq>(A, B), ParameterVector{A, B});
+    auto f = make_shared<Function>(make_shared<op::v1::LessEqual>(A, B), ParameterVector{A, B});
 
     auto backend = runtime::Backend::create("${BACKEND_NAME}");
 
@@ -213,7 +199,7 @@ NGRAPH_TEST(${BACKEND_NAME}, lesseq_bool)
     Shape shape{2, 2, 2};
     auto A = make_shared<op::Parameter>(element::boolean, shape);
     auto B = make_shared<op::Parameter>(element::boolean, shape);
-    auto f = make_shared<Function>(make_shared<op::LessEq>(A, B), ParameterVector{A, B});
+    auto f = make_shared<Function>(make_shared<op::v1::LessEqual>(A, B), ParameterVector{A, B});
 
     auto backend = runtime::Backend::create("${BACKEND_NAME}");
 

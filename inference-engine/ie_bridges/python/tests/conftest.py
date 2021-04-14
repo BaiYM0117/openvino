@@ -1,3 +1,6 @@
+# Copyright (C) 2018-2021 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 import pytest
 
@@ -18,6 +21,10 @@ def model_onnx_path():
     test_onnx = os.path.join(path_to_repo, "models", "test_model", 'test_model.onnx')
     return test_onnx
 
+def model_prototxt_path():
+    path_to_repo = os.environ["MODELS_PATH"]
+    test_prototxt = os.path.join(path_to_repo, "models", "test_model", 'test_model.prototxt')
+    return test_prototxt
 
 def image_path():
     path_to_repo = os.environ["DATA_PATH"]
@@ -28,7 +35,7 @@ def image_path():
 def plugins_path():
     path_to_repo = os.environ["DATA_PATH"]
     plugins_xml = os.path.join(path_to_repo, 'ie_class', 'plugins.xml')
-    plugins_win_xml = os.path.join(path_to_repo, 'ie_class', 'plugins_mingw.xml')
+    plugins_win_xml = os.path.join(path_to_repo, 'ie_class', 'plugins_win.xml')
     plugins_osx_xml = os.path.join(path_to_repo, 'ie_class', 'plugins_apple.xml')
     return (plugins_xml, plugins_win_xml, plugins_osx_xml)
 

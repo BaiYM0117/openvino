@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -16,7 +16,7 @@ class myriadLayersTestsTanh_smoke: public myriadLayersTests_nightly,
 
 TEST_P(myriadLayersTestsTanh_smoke, TestsTanh)
 {
-    _config[VPU_CONFIG_KEY(DETECT_NETWORK_BATCH)] = CONFIG_VALUE(NO);
+    _config[InferenceEngine::MYRIAD_DETECT_NETWORK_BATCH] = CONFIG_VALUE(NO);
     auto p = ::testing::WithParamInterface<SizeVector>::GetParam();
     SetInputTensors({p});
     SetOutputTensors({p});

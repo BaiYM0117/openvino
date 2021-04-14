@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2019 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -18,7 +18,17 @@ bool        deviceForceReset() { return true; }
 }  // namespace tests
 }  // namespace vpu
 
+
 std::vector<std::string> disabledTestPatterns() {
     return {
+    #if defined(_WIN32) || defined(_WIN64)
+        // TODO: Issue 31197
+        R"(.*(myriadLayersTestsProposal_smoke).*Caffe.*)",
+        R"(.*(myriadLayersTestsProposal_smoke).*CaffeNoClipBeforeNms.*)",
+        R"(.*(myriadLayersTestsProposal_smoke).*CaffeClipAfterNms.*)",
+        R"(.*(myriadLayersTestsProposal_smoke).*CaffeNormalizedOutput.*)",
+        R"(.*(myriadLayersTestsProposal_smoke).*TensorFlow.*)",
+        R"(.*(myriadCTCDecoderLayerTests_smoke).*CTCGreedyDecoder.*)",
+    #endif
     };
 }

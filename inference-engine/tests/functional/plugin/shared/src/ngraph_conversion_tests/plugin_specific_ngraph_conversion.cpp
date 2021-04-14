@@ -1,5 +1,4 @@
-// Copyright (C) 2020 Intel Corporation
-//
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -35,7 +34,7 @@ TEST_P(PluginSpecificConversion, addOutputAfterLoadNetwork) {
         InferenceEngine::ExecutableNetwork exeNetwork = ie.LoadNetwork(network, device);
         network.addOutput("add1");
         InferenceEngine::ExecutableNetwork exeNetwork2 = ie.LoadNetwork(network, device);
-    } catch (InferenceEngine::details::InferenceEngineException& ex) {
+    } catch (InferenceEngine::Exception& ex) {
         FAIL() << ex.what();
     }
 }
@@ -55,13 +54,7 @@ TEST_P(PluginSpecificConversion, GeluConversionTest) {
     InferenceEngine::ExecutableNetwork exeNetwork = ie.LoadNetwork(network, device);
     auto net = exeNetwork.GetExecGraphInfo();
 
-    if (device == "CPU") {
-        // Parameter->Activation->Output
-        ASSERT_EQ(net.layerCount(), 3);
-    } else if (device == "GPU") {
-        // Parameter--->Activation--->
-        ASSERT_EQ(net.layerCount(), 2);
-    }
+    ASSERT_EQ(net.layerCount(), 3);
 }
 
 TEST_P(PluginSpecificConversion, MatMulConversionTest) {

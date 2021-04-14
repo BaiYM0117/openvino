@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -8,6 +8,7 @@
 #include "tests_common.hpp"
 #include "ir_gen_helper.hpp"
 #include <ie_core.hpp>
+#include <legacy/details/ie_cnn_network_iterator.hpp>
 
 using namespace ::testing;
 using namespace std;
@@ -210,8 +211,9 @@ protected:
 
             graph.Infer(srcs, outputBlobs);
 
-            for (auto& layer : network) {
-                layer->params["PrimitivesPriority"] = "cpu:ref,cpu:ref_any";
+            details::CNNNetworkIterator l(network), end;
+            for ( ; l != end; ++l) {
+                (*l)->params["PrimitivesPriority"] = "cpu:ref,cpu:ref_any";
             }
             MKLDNNGraphTestClass graph2;
             graph2.CreateGraph(network);
@@ -226,7 +228,7 @@ protected:
             graph.Infer(srcs, outputBlobs2);
 
             compare(*output, *output2, 0.0005f);
-        } catch (const InferenceEngine::details::InferenceEngineException &e) {
+        } catch (const InferenceEngine::Exception &e) {
             FAIL() << e.what();
         }
     }

@@ -1,5 +1,4 @@
-// Copyright (C) 2020 Intel Corporation
-//
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -18,6 +17,6 @@ std::vector<addOutputsParams> testCases = {
         addOutputsParams(getTargetNetwork(), {"Memory_1"}, CommonTestUtils::DEVICE_CPU)
 };
 
-INSTANTIATE_TEST_CASE_P(AddOutputBasic, AddOutputsTest,
+INSTANTIATE_TEST_CASE_P(smoke_AddOutputBasic, AddOutputsTest,
                         ::testing::ValuesIn(testCases),
                         AddOutputsTest::getTestCaseName);

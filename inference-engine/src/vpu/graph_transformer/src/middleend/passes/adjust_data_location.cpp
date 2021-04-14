@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -458,7 +458,7 @@ void PassImpl::packDataInCmx(const Model& model) {
             return DataLoopStatus::NextChild;
         });
 
-        auto allocRes = runAllocator(model, true);
+        auto allocRes = runAllocator(model, EnableShapeAllocation::NO, CheckOnlyCMX::YES);
         env.log->trace("Allocation result : %v", allocRes.status);
 
         if (allocRes.status != AllocationStatus::OK) {

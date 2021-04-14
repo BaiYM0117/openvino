@@ -1,16 +1,6 @@
-// Copyright (c) 2016-2017 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include "include/include_all.cl"
 
@@ -105,24 +95,6 @@ KERNEL(deconvolution_gpu_yxfb_ref)(
                             input_idx = input_offset + (uint)fixed_input_offset_x*INPUT0_X_PITCH + (uint)fixed_input_offset_y*INPUT0_Y_PITCH + (uint)fixed_input_offset_z*INPUT0_Z_PITCH;
 #endif
 
-#if GRADIENT
-                            uint filter_idx = filter_offset + of*FILTER_IFM_PITCH + (FILTER_SIZE_Z - k - 1)*FILTER_Z_PITCH + (FILTER_SIZE_Y - i - 1)*FILTER_Y_PITCH + (FILTER_SIZE_X - j - 1)*FILTER_X_PITCH;
-                            for (uint h = 0; h < FILTER_OFM_NUM; h++) {
-#if !INPUT0_SIMPLE
-#   if INPUT0_DIMS <= 4
-                                input_idx = INPUT0_GET_INDEX(batch_offset, h + g*FILTER_IFM_NUM, fixed_input_offset_y, fixed_input_offset_x);
-#   elif INPUT0_DIMS == 5
-                                input_idx = INPUT0_GET_INDEX(batch_offset, h + g*FILTER_IFM_NUM, fixed_input_offset_z, fixed_input_offset_y, fixed_input_offset_x);
-#   endif
-#endif
-
-                                acc += TO_ACCUMULATOR_TYPE(input[input_idx]) * TO_ACCUMULATOR_TYPE(filter[filter_idx]);
-                                filter_idx += FILTER_OFM_PITCH;
-#if INPUT0_SIMPLE
-                                input_idx += INPUT0_FEATURE_PITCH;
-#endif
-                            }
-#else // GRADIENT
                             uint filter_idx = filter_offset + of*FILTER_OFM_PITCH + (FILTER_SIZE_Z - k - 1)*FILTER_Z_PITCH + (FILTER_SIZE_Y - i - 1)*FILTER_Y_PITCH + (FILTER_SIZE_X - j - 1)*FILTER_X_PITCH;
                             for (uint h = 0; h < FILTER_IFM_NUM; h++) {
 #if !INPUT0_SIMPLE
@@ -139,7 +111,6 @@ KERNEL(deconvolution_gpu_yxfb_ref)(
                                 input_idx += INPUT0_FEATURE_PITCH;
 #endif
                             }
-#endif // GRADIENT
                         }
                     }
                 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -8,8 +8,6 @@
 #include <ie_core.hpp>
 #include <ie_plugin_config.hpp>
 #include "tests_common.hpp"
-
-#include "unit_test_utils/mocks/mock_error_listener.hpp"
 
 using namespace ::testing;
 using namespace std;
@@ -417,7 +415,7 @@ private:
 };
 using fake_ext_factory = std::function<InferenceEngine::ILayerImplFactory*(const InferenceEngine::CNNLayer *)>;
 
-class FakeExtensionFabric : public InferenceEngine::IExtension {
+class FakeExtensionFabric : public InferenceEngine::Extensions::Cpu::MKLDNNExtensions {
 public:
     FakeExtensionFabric() {
         factories["CustomNewConvolution"] = [](const InferenceEngine::CNNLayer * cnnLayer) -> InferenceEngine::ILayerImplFactory* { return new FakeGenericPrimitiveFactory(); };
@@ -434,9 +432,6 @@ public:
 
     void GetVersion(const InferenceEngine::Version *&versionInfo) const noexcept override {}
     void Unload() noexcept override {}
-    void Release() noexcept override {
-        delete this;
-    }
     InferenceEngine::StatusCode getPrimitiveTypes(char**& types, unsigned int& size, InferenceEngine::ResponseDesc* resp) noexcept override {
         types = new char *[factories.size()];
         size_t count = 0;
@@ -457,11 +452,6 @@ public:
         }
         factory = factories[cnnLayer->type](cnnLayer);
         return InferenceEngine::OK;
-    }
-
-    InferenceEngine::StatusCode getShapeInferImpl(InferenceEngine::IShapeInferImpl::Ptr& impl, const char* type,
-                                                  InferenceEngine::ResponseDesc* resp) noexcept override {
-        return InferenceEngine::NOT_IMPLEMENTED;
     }
 
 private:
@@ -489,7 +479,7 @@ TEST_F(MKLDNNGraphGenericTests, canGetPrimitiveDescriptorsList) {
 
     mkldnn::engine eng(mkldnn::engine(mkldnn::engine::kind::cpu, 0));
     MKLDNNPlugin::MKLDNNWeightsSharing::Ptr cache;
-    node.reset(MKLDNNPlugin::MKLDNNNode::CreateNode(layerPtr, eng, extMgr, cache));
+    node.reset(MKLDNNPlugin::MKLDNNNode::factory().create(layerPtr, eng, extMgr, cache));
     ASSERT_EQ(MKLDNNPlugin::Type::Generic, node->getType());
 
     ASSERT_NO_THROW(node->getSupportedDescriptors());
@@ -575,7 +565,7 @@ TEST_F(MKLDNNGraphGenericTests, DontCreateGPUGenericPrimitive) {
     ASSERT_NO_THROW(network = core.ReadNetwork(model, InferenceEngine::Blob::CPtr()));
 
     MKLDNNGraphTestClass graph;
-    ASSERT_THROW(graph.CreateGraph(network, extMgr), InferenceEngine::details::InferenceEngineException);
+    ASSERT_THROW(graph.CreateGraph(network, extMgr), InferenceEngine::Exception);
 }
 
 TEST_F(MKLDNNGraphGenericTests, ExecuteConstGenericPrimitive) {

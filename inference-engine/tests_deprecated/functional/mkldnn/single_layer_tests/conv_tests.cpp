@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -239,7 +239,7 @@ protected:
             CNNNetwork network = getNetwork(weights, p);
             infer(network, p, src, dst);
             compare(*dst, *dst_ref);
-        } catch (const InferenceEngine::details::InferenceEngineException &e) {
+        } catch (const InferenceEngine::Exception &e) {
             FAIL() << e.what();
         }
     }
@@ -300,16 +300,17 @@ protected:
             dst_ref->allocate();
             calculateRef(weights, p, src, dst_ref);
             compare(*dst, *dst_ref);
-        } catch (const InferenceEngine::details::InferenceEngineException &e) {
+        } catch (const InferenceEngine::Exception &e) {
             FAIL() << e.what();
         }
     }
 
     void updatePaddings(const CNNNetwork &network, conv_test_params& p) {
-        auto found = std::find_if(network.begin(), network.end(), [](const CNNLayer::Ptr& layer) {
+        details::CNNNetworkIterator i(network), end;
+        auto found = std::find_if(i, end, [](const CNNLayer::Ptr& layer) {
             return layer->type == "Convolution";
         });
-        ASSERT_NE(found, network.end());
+        ASSERT_NE(found, end);
         auto convLayer = std::dynamic_pointer_cast<ConvolutionLayer>(*found);
         auto allPad = getPaddings(*convLayer.get());
         p.pads_begin[X_AXIS] = allPad.begin[X_AXIS];
@@ -377,7 +378,8 @@ protected:
 // NOTE: always auto_pad = same_upper. IR with zero_pads, pad from params is used for ref_conv after reshape
 #define case_si_1 conv_base_params({{1lu, 144lu, 75lu, 75lu}, {3lu, 3lu}, {2lu, 2lu}, {1lu, 1lu}, {0lu, 0lu}, {1lu, 1lu}, 144lu, 144lu, {1lu, 1lu}})
 
-TEST_P(smoke_ConvolutionReshapeTest, TestsReshapeConvolution) {
+// TODO: rewrite to ngraph to have reshape functionality
+TEST_P(smoke_ConvolutionReshapeTest, DISABLED_TestsReshapeConvolution) {
 }
 
 std::string getTestCaseName(testing::TestParamInfo<conv_test_params> obj) {

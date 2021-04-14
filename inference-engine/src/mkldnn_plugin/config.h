@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -11,14 +11,7 @@
 namespace MKLDNNPlugin {
 
 struct Config {
-    Config() {
-#if (defined(__APPLE__) || defined(_WIN32))
-        streamExecutorConfig._threadBindingType = InferenceEngine::IStreamsExecutor::NUMA;
-#else
-        streamExecutorConfig._threadBindingType = InferenceEngine::IStreamsExecutor::CORES;
-#endif
-        updateProperties();
-    }
+    Config();
 
     enum LPTransformsMode {
         Off,

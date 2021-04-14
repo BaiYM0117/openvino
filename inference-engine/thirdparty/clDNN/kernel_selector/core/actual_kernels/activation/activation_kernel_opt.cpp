@@ -1,16 +1,6 @@
-﻿// Copyright (c) 2016-2020 Intel Corporation
+﻿// Copyright (C) 2018-2021 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include "activation_kernel_opt.h"
 #include "kernel_selector_utils.h"
@@ -34,29 +24,22 @@ ParamsKey ActivationKernelOpt::GetSupportedKey() const {
     k.EnableAllOutputLayout();
     k.EnableTensorOffset();
     k.EnableBatching();
-    k.EnableGradient();
     return k;
 }
 
 ActivationKernelOpt::Parent::DispatchData ActivationKernelOpt::SetDefault(const activation_params& params) const {
-    auto runInfo = Parent::SetDefault(params);
+    auto dispatchData = Parent::SetDefault(params);
 
     const auto totalSize = params.inputs[0].LogicalSize();
 
-    std::vector<size_t> global = {totalSize / NUM_COLS_WI};
-    std::vector<size_t> local = GetOptimalLocalWorkGroupSizes(global, params.engineInfo);
+    dispatchData.gws = { totalSize / NUM_COLS_WI, 1, 1 };
+    dispatchData.lws = GetOptimalLocalWorkGroupSizes(dispatchData.gws, params.engineInfo);
 
-    runInfo.gws0 = global[0];
-    runInfo.gws1 = 1;
-    runInfo.gws2 = 1;
+    return dispatchData;
+}
 
-    runInfo.lws0 = local[0];
-    runInfo.lws1 = 1;
-    runInfo.lws2 = 1;
-
-    runInfo.efficiency = FORCE_PRIORITY_6;
-
-    return runInfo;
+KernelsPriority ActivationKernelOpt::GetKernelsPriority(const Params& /*params*/, const optional_params& /*options*/) const {
+    return FORCE_PRIORITY_6;
 }
 
 bool ActivationKernelOpt::Validate(const Params& p, const optional_params& o) const {
@@ -88,8 +71,8 @@ bool ActivationKernelOpt::Validate(const Params& p, const optional_params& o) co
     return true;
 }
 
-JitConstants ActivationKernelOpt::GetJitConstants(const activation_params& params, DispatchData kd) const {
-    auto jit = ActivationKernelBase::GetJitConstants(params, kd);
+JitConstants ActivationKernelOpt::GetJitConstants(const activation_params& params, DispatchData dispatchData) const {
+    auto jit = ActivationKernelBase::GetJitConstants(params, dispatchData);
     auto input_dt = params.inputs[0].GetDType();
 
     jit.AddConstant(MakeJitConstant("NUM_COLS_WI", NUM_COLS_WI));

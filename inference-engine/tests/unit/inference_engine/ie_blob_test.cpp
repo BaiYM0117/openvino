@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -8,7 +8,7 @@
 
 #include "unit_test_utils/mocks/mock_allocator.hpp"
 
-#ifdef WIN32
+#ifdef _WIN32
 #define UNUSED
 #else
 #define UNUSED  __attribute__((unused))
@@ -28,14 +28,14 @@ protected:
 // Testing TBlob(const TensorDesc& tensorDesc, T* ptr, size_t data_size = 0)
 TEST_F(BlobTests, TBlobThrowsIfPtrForPreAllocatorIsNullPtr) {
     ASSERT_THROW(InferenceEngine::TBlob<float>({InferenceEngine::Precision::FP32, {1}, InferenceEngine::C}, nullptr),
-                 InferenceEngine::details::InferenceEngineException);
+                 InferenceEngine::Exception);
 }
 
 // Testing TBlob(const TensorDesc& tensorDesc, const std::std::shared_ptr<IAllocator>& alloc)
 TEST_F(BlobTests, TBlobThrowsIfAllocatorIsNullPtr) {
     ASSERT_THROW(InferenceEngine::TBlob<float>(
             {InferenceEngine::Precision::FP32, {1}, InferenceEngine::C}, std::shared_ptr<InferenceEngine::IAllocator>()),
-           InferenceEngine::details::InferenceEngineException);
+           InferenceEngine::Exception);
 }
 
 
@@ -261,14 +261,17 @@ TEST_F(BlobTests, canMakeSharedBlob) {
             { InferenceEngine::Precision::FP32, size, InferenceEngine::CHW });
     InferenceEngine::TBlob<float>::Ptr blob3
             = InferenceEngine::make_shared_blob<float>({ InferenceEngine::Precision::FP32, { 0 }, InferenceEngine::C });
+    InferenceEngine::TBlob<float>::Ptr blob4 = InferenceEngine::make_shared_blob<float>(
+            { InferenceEngine::Precision::FP32, size, InferenceEngine::HWC });
     ASSERT_EQ(blob1->size(), 0);
     ASSERT_EQ(blob2->size(), 1);
     ASSERT_EQ(blob3->size(), 0);
+    ASSERT_EQ(blob4->size(), 1);
 }
 
 TEST_F(BlobTests, cannotCreateBlobWithIncorrectPrecision) {
     InferenceEngine::TensorDesc desc(InferenceEngine::Precision::FP16, {1, 3, 227, 227}, InferenceEngine::Layout::NCHW);
-    ASSERT_THROW(InferenceEngine::make_shared_blob<float>(desc), InferenceEngine::details::InferenceEngineException);
+    ASSERT_THROW(InferenceEngine::make_shared_blob<float>(desc), InferenceEngine::Exception);
 }
 
 TEST_F(BlobTests, canUseBlobInMoveSemantics) {
@@ -393,5 +396,55 @@ TEST_F(BlobTests, makeRoiBlobWrongSize) {
 
     // try to create ROI blob with wrong size
     InferenceEngine::ROI roi = {0, 1, 1, 4, 4};  // cropped picture with: id = 0, (x,y) = (1,1), sizeX (W) = 4, sizeY (H) = 4
-    ASSERT_THROW(make_shared_blob(blob, roi), InferenceEngine::details::InferenceEngineException);
+    ASSERT_THROW(make_shared_blob(blob, roi), InferenceEngine::Exception);
+}
+
+TEST_F(BlobTests, readRoiBlob) {
+    // Create original Blob
+
+    const auto origDesc =
+        InferenceEngine::TensorDesc(
+            InferenceEngine::Precision::I32,
+            {1, 3, 4, 8},
+            InferenceEngine::NCHW);
+
+    const auto origBlob =
+        InferenceEngine::make_shared_blob<int32_t>(origDesc);
+    origBlob->allocate();
+
+    // Fill the original Blob
+
+    {
+        auto origMemory = origBlob->wmap();
+        const auto origPtr = origMemory.as<int32_t*>();
+        ASSERT_NE(nullptr, origPtr);
+
+        for (size_t i = 0; i < origBlob->size(); ++i) {
+            origPtr[i] = i;
+        }
+    }
+
+    // Create ROI Blob
+
+    const auto roi = InferenceEngine::ROI(0, 4, 2, 4, 2);
+
+    const auto roiBlob = InferenceEngine::as<InferenceEngine::MemoryBlob>(origBlob->createROI(roi));
+    ASSERT_NE(nullptr, roiBlob);
+
+    // Read ROI Blob
+
+    {
+        const auto roiOffset = roiBlob->getTensorDesc().getBlockingDesc().getOffsetPadding();
+
+        auto roiMemory = roiBlob->rmap();
+        auto roiPtr = roiMemory.as<const int32_t*>();
+        ASSERT_NE(nullptr, roiPtr);
+
+        // Blob::rmap returns pointer to the original blob start, we have to add ROI offset manually.
+        roiPtr += roiOffset;
+
+        for (size_t i = 0; i < roiBlob->size(); ++i) {
+            ASSERT_EQ(roiPtr[i], i + roiOffset);
+        }
+    }
 }

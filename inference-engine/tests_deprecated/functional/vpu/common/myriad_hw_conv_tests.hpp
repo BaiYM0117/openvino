@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -49,7 +49,7 @@ public:
         numWeights = kernel.x * kernel.y * (in_dims.c / group) * out_dims.c;
         numBiases = out_dims.c;
 
-        _config[VPU_CONFIG_KEY(HW_DILATION)] = CONFIG_VALUE(YES);
+        _config[InferenceEngine::MYRIAD_HW_DILATION] = CONFIG_VALUE(YES);
     }
 
     void AddInitialCopyLayer() {

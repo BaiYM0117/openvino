@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -7,38 +7,46 @@
 #include <map>
 #include <string>
 
-#include <inference_engine.hpp>
-#include <ie_plugin_ptr.hpp>
+#include <cpp_interfaces/impl/ie_plugin_internal.hpp>
 #include <ie_icnn_network.hpp>
 
-IE_SUPPRESS_DEPRECATED_START
-class MockPlugin : public InferenceEngine::IInferencePlugin {
+class MockPlugin : public InferenceEngine::InferencePluginInternal {
     InferenceEngine::IInferencePlugin * _target = nullptr;
-    InferenceEngine::Version version;
 
 public:
     explicit MockPlugin(InferenceEngine::IInferencePlugin*target);
 
-    void GetVersion(const InferenceEngine::Version *& versionInfo) noexcept override;
-    void SetLogCallback(InferenceEngine::IErrorListener& listener) noexcept override;
+    void SetConfig(const std::map<std::string, std::string>& config) override;
 
-    InferenceEngine::StatusCode AddExtension(InferenceEngine::IExtensionPtr extension, InferenceEngine::ResponseDesc *resp) noexcept override;
+    std::shared_ptr<InferenceEngine::IExecutableNetworkInternal>
+    LoadNetwork(const InferenceEngine::CNNNetwork &network,
+                const std::map<std::string, std::string> &config) override;
 
-    InferenceEngine::StatusCode SetConfig(const std::map<std::string, std::string>& config,
-                                          InferenceEngine::ResponseDesc* resp) noexcept override;
+    std::shared_ptr<InferenceEngine::IExecutableNetworkInternal>
+    LoadNetwork(const InferenceEngine::CNNNetwork& network,
+                const std::map<std::string, std::string>& config,
+                InferenceEngine::RemoteContext::Ptr context) override;
 
+    std::shared_ptr<InferenceEngine::ExecutableNetworkInternal>
+    LoadExeNetworkImpl(const InferenceEngine::CNNNetwork& network,
+                       const std::map<std::string, std::string>& config) override;
 
-    InferenceEngine::StatusCode
-    LoadNetwork(InferenceEngine::IExecutableNetwork::Ptr &ret, const InferenceEngine::ICNNNetwork &network,
-                const std::map<std::string, std::string> &config, InferenceEngine::ResponseDesc *resp) noexcept override;
+    std::shared_ptr<InferenceEngine::ExecutableNetworkInternal>
+    ImportNetworkImpl(std::istream& networkModel,
+        const std::map<std::string, std::string>& config) override;
 
-    InferenceEngine::StatusCode
-    ImportNetwork(InferenceEngine::IExecutableNetwork::Ptr &ret, const std::string &modelFileName,
-                  const std::map<std::string, std::string> &config, InferenceEngine::ResponseDesc *resp) noexcept override;
+    std::shared_ptr<InferenceEngine::ExecutableNetworkInternal>
+    ImportNetworkImpl(std::istream& networkModel,
+        const InferenceEngine::RemoteContext::Ptr& context,
+        const std::map<std::string, std::string>& config) override;
 
-    void Release() noexcept override;
+    InferenceEngine::Parameter GetMetric(const std::string& name,
+                        const std::map<std::string, InferenceEngine::Parameter>& options) const override;
+
+    InferenceEngine::RemoteContext::Ptr GetDefaultContext(const InferenceEngine::ParamMap& params) override;
+
+    InferenceEngine::QueryNetworkResult QueryNetwork(const InferenceEngine::CNNNetwork& network,
+                                                     const std::map<std::string, std::string>& config) const override;
 
     std::map<std::string, std::string> config;
 };
-
-IE_SUPPRESS_DEPRECATED_END

@@ -1,18 +1,6 @@
-//*****************************************************************************
-// Copyright 2017-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//*****************************************************************************
 
 #include <cstring>
 #include <memory>
@@ -20,7 +8,6 @@
 
 #include "ie_tensor.hpp"
 #include "ngraph/check.hpp"
-#include "ngraph/descriptor/layout/dense_tensor_layout.hpp"
 #include "ngraph/except.hpp"
 #include "ngraph/util.hpp"
 
@@ -30,16 +17,12 @@ using namespace std;
 runtime::ie::IETensor::IETensor(const element::Type& element_type, const PartialShape& shape)
     : runtime::Tensor(make_shared<descriptor::Tensor>(element_type, shape, ""))
 {
-    m_descriptor->set_tensor_layout(
-        make_shared<descriptor::layout::DenseTensorLayout>(*m_descriptor));
 }
 
 runtime::ie::IETensor::IETensor(const element::Type& element_type, const Shape& shape)
     : runtime::Tensor(make_shared<descriptor::Tensor>(element_type, shape, ""))
     , m_data(shape_size(shape) * element_type.size())
 {
-    m_descriptor->set_tensor_layout(
-        make_shared<descriptor::layout::DenseTensorLayout>(*m_descriptor));
 }
 
 void runtime::ie::IETensor::write(const void* src, size_t bytes)

@@ -1,4 +1,4 @@
-// Copyright (C) 2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -6,7 +6,7 @@
 
 #include "vpu/private_plugin_config.hpp"
 
-#include <functional_test_utils/layer_test_utils.hpp>
+#include <shared_test_classes/base/layer_test_utils.hpp>
 #include <functional_test_utils/blob_utils.hpp>
 #include <precision_utils.h>
 #include <ngraph/opsets/opset3.hpp>
@@ -32,7 +32,7 @@ using OutShapeOfReshapeTestParam = std::tuple<
 namespace LayerTestsDefinitions {
 
 class OutShapeOfReshapeLayerTest : public testing::WithParamInterface<OutShapeOfReshapeTestParam>,
-                                   public LayerTestsUtils::LayerTestsCommon {
+                                   virtual public LayerTestsUtils::LayerTestsCommon {
 public:
     static std::string getTestCaseName(const testing::TestParamInfo<OutShapeOfReshapeTestParam>& obj) {
         OutShapeOfReshapeParam shapesParam;
@@ -54,8 +54,8 @@ public:
 protected:
     void SetUp() override {
         SetRefMode(LayerTestsUtils::RefMode::INTERPRETER);
-        configuration[VPU_CONFIG_KEY(DETECT_NETWORK_BATCH)] = CONFIG_VALUE(NO);
-        configuration[VPU_CONFIG_KEY(DISABLE_REORDER)] = CONFIG_VALUE(YES);
+        configuration[InferenceEngine::MYRIAD_DETECT_NETWORK_BATCH] = CONFIG_VALUE(NO);
+        configuration[InferenceEngine::MYRIAD_DISABLE_REORDER] = CONFIG_VALUE(YES);
 
         OutShapeOfReshapeParam shapesParam;
         std::tie(shapesParam, targetDevice) = this->GetParam();
@@ -111,7 +111,7 @@ std::vector<OutShapeOfReshapeParam> shapeParams = {
         std::make_tuple(InputShape{ 2, 5,   5,   0 }, ShapeDescriptor{ 0,  4          }, false),
 };
 
-INSTANTIATE_TEST_CASE_P(accuracy, OutShapeOfReshapeLayerTest,
+INSTANTIATE_TEST_CASE_P(smoke_accuracy, OutShapeOfReshapeLayerTest,
                         ::testing::Combine(
                                 ::testing::ValuesIn(shapeParams),
                                 ::testing::Values(CommonTestUtils::DEVICE_MYRIAD)),

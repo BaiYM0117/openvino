@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -12,6 +12,9 @@
 using namespace ::testing;
 using namespace std;
 using namespace mkldnn;
+
+constexpr auto depthwise_scale_shift = mkldnn::algorithm::depthwise_scale_shift;
+constexpr auto depthwise_prelu = mkldnn::algorithm::depthwise_prelu;
 
 struct conv_params {
     size_t krn_w;
@@ -257,14 +260,14 @@ protected:
                 ASSERT_EQ(nodes.size(), 3);
                 ASSERT_EQ(nodes[0].get()->getType(), MKLDNNPlugin::Type::Input);
                 ASSERT_EQ(nodes[1].get()->getType(), MKLDNNPlugin::Type::Convolution);
-                ASSERT_TRUE(nodes[1].get()->isFusedWith(MKLDNNPlugin::Type::Depthwise));
+                ASSERT_TRUE(nodes[1].get()->isFusedWith(MKLDNNPlugin::Type::Eltwise));
                 ASSERT_EQ(nodes[2].get()->getType(), MKLDNNPlugin::Type::Output);
             } else {
                 ASSERT_EQ(nodes.size(), 5);
                 ASSERT_EQ(nodes[0].get()->getType(), MKLDNNPlugin::Type::Input);
                 ASSERT_EQ(nodes[1].get()->getType(), MKLDNNPlugin::Type::Reorder);
                 ASSERT_EQ(nodes[2].get()->getType(), MKLDNNPlugin::Type::Convolution);
-                ASSERT_TRUE(nodes[2].get()->isFusedWith(MKLDNNPlugin::Type::Depthwise));
+                ASSERT_TRUE(nodes[2].get()->isFusedWith(MKLDNNPlugin::Type::Eltwise));
                 ASSERT_EQ(nodes[3].get()->getType(), MKLDNNPlugin::Type::Reorder);
                 ASSERT_EQ(nodes[4].get()->getType(), MKLDNNPlugin::Type::Output);
             }
@@ -304,7 +307,7 @@ protected:
             ref_conv_depthwise(*srcPtr, (const float *)weights->buffer(), dst_ref, p);
 
             compare(*output, dst_ref);
-        } catch (const InferenceEngine::details::InferenceEngineException &e) {
+        } catch (const InferenceEngine::Exception &e) {
             FAIL() << e.what();
         }
     }

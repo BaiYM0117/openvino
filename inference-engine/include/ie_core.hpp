@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -14,34 +14,12 @@
 #include <string>
 #include <vector>
 
-#include <cpp/ie_executable_network.hpp>
-#include "details/os/os_filesystem.hpp"
+#include "ie_version.hpp"
 #include "ie_extension.h"
 #include "ie_remote_context.hpp"
+#include "cpp/ie_executable_network.hpp"
 
 namespace InferenceEngine {
-
-/**
- * @brief Responce structure encapsulating information about supported layer
- */
-struct QueryNetworkResult {
-    /**
-     * @brief A map of supported layers:
-     * - key - a layer name
-     * - value - a device name on which layer is assigned
-     */
-    std::map<std::string, std::string> supportedLayersMap;
-
-    /**
-     * @brief A status code
-     */
-    StatusCode rc = OK;
-
-    /**
-     * @brief Response message
-     */
-    ResponseDesc resp;
-};
 
 /**
  * @brief This class represents Inference Engine Core entity.
@@ -66,50 +44,50 @@ public:
     /**
      * @brief Returns plugins version information
      *
-     * @param deviceName Device name to indentify plugin
+     * @param deviceName Device name to identify plugin
      * @return A vector of versions
      */
     std::map<std::string, Version> GetVersions(const std::string& deviceName) const;
 
-    /**
-     * @deprecated IErrorListener is not used anymore. An exception is thrown in case of any unexpected situations.
-     * The function will be removed in 2021.1 release.
-     * @brief Sets logging callback
-     *
-     * Logging is used to track what is going on inside the plugins, Inference Engine library
-     *
-     * @param listener Logging sink
-     */
-    IE_SUPPRESS_DEPRECATED_START
-    INFERENCE_ENGINE_DEPRECATED("IErrorListener is not used anymore. An exception is thrown in case of any unexpected situations.")
-    void SetLogCallback(IErrorListener& listener) const;
-    IE_SUPPRESS_DEPRECATED_END
-
 #ifdef ENABLE_UNICODE_PATH_SUPPORT
     /**
-     * @brief Reads IR xml and bin files
-     * @param modelPath path to IR file
-     * @param binPath path to bin file, if path is empty, will try to read bin file with the same name as xml and
-     * if bin file with the same name was not found, will load IR without weights.
+     * @brief Reads models from IR and ONNX formats
+     * @param modelPath path to model
+     * @param binPath path to data file
+     * For IR format (*.bin):
+     *  * if path is empty, will try to read bin file with the same name as xml and
+     *  * if bin file with the same name was not found, will load IR without weights.
+     * For ONNX format (*.onnx or *.prototxt):
+     *  * binPath parameter is not used.
      * @return CNNNetwork
      */
-    CNNNetwork ReadNetwork(const std::wstring& modelPath, const std::wstring& binPath = {}) const {
-        return ReadNetwork(details::wStringtoMBCSstringChar(modelPath), details::wStringtoMBCSstringChar(binPath));
-    }
+    CNNNetwork ReadNetwork(const std::wstring& modelPath, const std::wstring& binPath = {}) const;
 #endif
 
     /**
-     * @brief Reads IR xml and bin files
-     * @param modelPath path to IR file
-     * @param binPath path to bin file, if path is empty, will try to read bin file with the same name as xml and
-     * if bin file with the same name was not found, will load IR without weights.
+     * @brief Reads models from IR and ONNX formats
+     * @param modelPath path to model
+     * @param binPath path to data file
+     * For IR format (*.bin):
+     *  * if path is empty, will try to read bin file with the same name as xml and
+     *  * if bin file with the same name was not found, will load IR without weights.
+     * For ONNX format (*.onnx or *.prototxt):
+     *  * binPath parameter is not used.
      * @return CNNNetwork
      */
     CNNNetwork ReadNetwork(const std::string& modelPath, const std::string& binPath = {}) const;
     /**
-     * @brief Reads IR xml and bin (with the same name) files
-     * @param model string with IR
+     * @brief Reads models from IR and ONNX formats
+     * @param model string with model in IR or ONNX format
      * @param weights shared pointer to constant blob with weights
+     * Reading ONNX models doesn't support loading weights from data blobs.
+     * If you are using an ONNX model with external data files, please use the
+     * `InferenceEngine::Core::ReadNetwork(const std::string& model, const Blob::CPtr& weights) const`
+     * function overload which takes a filesystem path to the model.
+     * For ONNX case the second parameter should contain empty blob.
+     * @note Created InferenceEngine::CNNNetwork object shares the weights with `weights` object.
+     * So, do not create `weights` on temporary data which can be later freed, since the network
+     * constant datas become to point to invalid memory.
      * @return CNNNetwork
      */
     CNNNetwork ReadNetwork(const std::string& model, const Blob::CPtr& weights) const;
@@ -128,6 +106,23 @@ public:
      */
     ExecutableNetwork LoadNetwork(
         const CNNNetwork& network, const std::string& deviceName,
+        const std::map<std::string, std::string>& config = {});
+
+    /**
+     * @brief Reads model and creates an executable network from IR or ONNX file
+     *
+     * This can be more efficient than using ReadNetwork + LoadNetwork(CNNNetwork) flow
+     *        especially for cases when caching is enabled and cached model is available
+     *
+     * @param modelPath path to model
+     * @param deviceName Name of device to load network to
+     * @param config Optional map of pairs: (config parameter name, config parameter value) relevant only for this load
+     * operation/
+     *
+     * @return An executable network reference
+     */
+    ExecutableNetwork LoadNetwork(
+        const std::string& modelPath, const std::string& deviceName,
         const std::map<std::string, std::string>& config = {});
 
     /**
@@ -159,8 +154,8 @@ public:
     /**
      * @brief Creates an executable network from a previously exported network
      *
-     * @param deviceName Name of device load executable network on
      * @param modelFileName Path to the location of the exported file
+     * @param deviceName Name of device load executable network on
      * @param config Optional map of pairs: (config parameter name, config parameter value) relevant only for this load
      * operation*
      * @return An executable network reference
@@ -171,8 +166,8 @@ public:
 
     /**
      * @brief Creates an executable network from a previously exported network
-     * @param deviceName Name of device load executable network on
      * @param networkModel network model stream
+     * @param deviceName Name of device load executable network on
      * @param config Optional map of pairs: (config parameter name, config parameter value) relevant only for this load
      * operation*
      * @return An executable network reference
@@ -203,13 +198,13 @@ public:
      * @return An object containing a map of pairs a layer name -> a device name supporting this layer.
      */
     QueryNetworkResult QueryNetwork(
-        const ICNNNetwork& network, const std::string& deviceName,
+        const CNNNetwork& network, const std::string& deviceName,
         const std::map<std::string, std::string>& config = {}) const;
 
     /**
      * @brief Sets configuration for device, acceptable keys can be found in ie_plugin_config.hpp
      *
-     * @param deviceName An optinal name of a device. If device name is not specified, the config is set for all the
+     * @param deviceName An optional name of a device. If device name is not specified, the config is set for all the
      * registered devices.
      *
      * @param config Map of pairs: (config parameter name, config parameter value)
@@ -222,7 +217,7 @@ public:
      * The method is targeted to extract information which can be set via SetConfig method.
      *
      * @param deviceName  - A name of a device to get a configuration value.
-     * @param name  - value of config corresponding to config key.
+     * @param name  - config key.
      * @return Value of config corresponding to config key.
      */
     Parameter GetConfig(const std::string& deviceName, const std::string& name) const;

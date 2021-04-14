@@ -1,6 +1,7 @@
-// Copyright (C) 2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
+
 #include "bfloat16_helpers.hpp"
 
 #include <memory>
@@ -118,7 +119,6 @@ protected:
         // performance counters
         expectedPrecisions["ADD_1"] = "FP32";
         expectedPrecisions["CONV_1"] = "BF16";
-        expectedPrecisions["CONV_2"] = "BF16";
         expectedPrecisions["RELU"] = "ndef";
     }
 };
@@ -127,7 +127,7 @@ TEST_P(ConvDWConvReLU, CompareWithRefImpl) {
     test();
 };
 
-INSTANTIATE_TEST_CASE_P(FP32_bfloat16_NoReshape, ConvDWConvReLU,
+INSTANTIATE_TEST_CASE_P(smoke_FP32_bfloat16_NoReshape, ConvDWConvReLU,
                             ::testing::Combine(
                                     ::testing::Values(Precision::FP32),
                                     ::testing::Values(Precision::FP32),
@@ -136,7 +136,7 @@ INSTANTIATE_TEST_CASE_P(FP32_bfloat16_NoReshape, ConvDWConvReLU,
                                     ::testing::Values(CommonTestUtils::DEVICE_CPU)),
                         ConvDWConvReLU::getTestCaseName);
 
-INSTANTIATE_TEST_CASE_P(BF16_bfloat16_NoReshape, ConvDWConvReLU,
+INSTANTIATE_TEST_CASE_P(smoke_BF16_bfloat16_NoReshape, ConvDWConvReLU,
                         ::testing::Combine(
                             ::testing::Values(Precision::FP32),
                             ::testing::Values(Precision::BF16),

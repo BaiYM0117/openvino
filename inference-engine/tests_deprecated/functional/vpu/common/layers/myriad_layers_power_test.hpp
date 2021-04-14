@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -42,7 +42,7 @@ static void gen_ref_power(const InferenceEngine::Blob::Ptr src,
 typedef myriadLayerTestBaseWithParam<std::tuple<SizeVector, pwr_test_params>> myriadLayersTestsPowerParams_smoke;
 
 TEST_P(myriadLayersTestsPowerParams_smoke, TestsPower) {
-    _config[VPU_CONFIG_KEY(DETECT_NETWORK_BATCH)] = CONFIG_VALUE(NO);
+    _config[InferenceEngine::MYRIAD_DETECT_NETWORK_BATCH] = CONFIG_VALUE(NO);
     auto param = GetParam();
     SizeVector tensor = std::get<0>(param);
     pwr_test_params p = std::get<1>(param);

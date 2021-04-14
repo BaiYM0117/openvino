@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -19,7 +19,7 @@ PRETTY_PARAM(SliceTestParams, SliceParams);
 typedef myriadLayerTestBaseWithParam<SliceTestParams> myriadLayersTestsSlice_smoke;
 
 TEST_P(myriadLayersTestsSlice_smoke, Slice) {
-    _config[VPU_CONFIG_KEY(DETECT_NETWORK_BATCH)] = CONFIG_VALUE(NO);
+    _config[InferenceEngine::MYRIAD_DETECT_NETWORK_BATCH] = CONFIG_VALUE(NO);
 
     const SliceParams testParams = GetParam();
 

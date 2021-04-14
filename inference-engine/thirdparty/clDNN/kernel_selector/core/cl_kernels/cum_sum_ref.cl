@@ -1,16 +1,6 @@
-// Copyright (c) 2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include "include/include_all.cl"
 
@@ -44,9 +34,9 @@ inline uint FUNC(get_output_index)(uint b, uint f, uint w, uint z, uint y, uint 
 
 KERNEL(cum_sum_ref)( const __global INPUT0_TYPE* input, __global OUTPUT_TYPE* output)
 {
-    const uint batch = get_global_id(0);
-    const uint features = get_global_id(1) / OUTPUT_SIZE_W;
-    const uint w = get_global_id(1) % OUTPUT_SIZE_W;
+    const uint batch = (uint)get_global_id(0);
+    const uint features = (uint)get_global_id(1) / OUTPUT_SIZE_W;
+    const uint w = (uint)get_global_id(1) % OUTPUT_SIZE_W;
     const uint yx = (uint)get_global_id(2) % (OUTPUT_SIZE_X * OUTPUT_SIZE_Y);
     const uint z = (uint)get_global_id(2) / (OUTPUT_SIZE_X * OUTPUT_SIZE_Y);
     const uint y = yx / OUTPUT_SIZE_X;

@@ -1,9 +1,9 @@
-# Copyright (C) 2019 Intel Corporation
-#
+# Copyright (C) 2018-2021 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set(TARGET_NAME TemplateFuncTests)
+# [cmake:functional_tests]
+set(TARGET_NAME templateFuncTests)
 
 addIeTargetTest(
         NAME ${TARGET_NAME}
@@ -12,7 +12,10 @@ addIeTargetTest(
             templatePlugin
         LINK_LIBRARIES
             IE::funcSharedTests
+        INCLUDES
+            "${IE_MAIN_TEMPLATE_PLUGIN_SOURCE_DIR}/include"
         ADD_CPPLINT
         LABELS
             TEMPLATE
 )
+# [cmake:functional_tests]

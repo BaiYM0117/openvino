@@ -1,3 +1,6 @@
+# Copyright (C) 2018-2021 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
 import numpy as np
 import os
 import pytest
@@ -16,11 +19,11 @@ path_to_img = image_path()
 def read_image():
     import cv2
     n, c, h, w = (1, 3, 32, 32)
-    image = cv2.imread(path_to_img) / 255
+    image = cv2.imread(path_to_img)
     if image is None:
         raise FileNotFoundError("Input image not found")
 
-    image = cv2.resize(image, (h, w))
+    image = cv2.resize(image, (h, w)) / 255
     image = image.transpose((2, 0, 1)).astype(np.float32)
     image = image.reshape((n, c, h, w))
     return image
@@ -373,6 +376,9 @@ def test_async_infer_callback_wait_in_callback(device):
 
 def test_get_perf_counts(device):
     ie_core = ie.IECore()
+    if device == "CPU":
+        if ie_core.get_metric(device, "FULL_DEVICE_NAME") == "arm_compute::NEON":
+            pytest.skip("Can't run on ARM plugin due-to ngraph")
     net = ie_core.read_network(test_net_xml, test_net_bin)
     ie_core.set_config({"PERF_COUNT": "YES"}, device)
     exec_net = ie_core.load_network(net, device)
@@ -387,11 +393,13 @@ def test_get_perf_counts(device):
     del net
 
 
-@pytest.mark.skipif(os.environ.get("TEST_DEVICE", "CPU") != "CPU", reason="Can't run test on device {},"
-                                                                          "Dynamic batch fully supported only on CPU".format(
-    os.environ.get("TEST_DEVICE", "CPU")))
+@pytest.mark.skipif(os.environ.get("TEST_DEVICE", "CPU") != "CPU",
+                    reason=f"Can't run test on device {os.environ.get('TEST_DEVICE', 'CPU')}, "
+                            "Dynamic batch fully supported only on CPU")
 def test_set_batch_size(device):
     ie_core = ie.IECore()
+    if ie_core.get_metric(device, "FULL_DEVICE_NAME") == "arm_compute::NEON":
+        pytest.skip("Can't run on ARM plugin due-to dynamic batch isn't supported")
     ie_core.set_config({"DYN_BATCH_ENABLED": "YES"}, device)
     net = ie_core.read_network(test_net_xml, test_net_bin)
     net.batch_size = 10
@@ -435,6 +443,9 @@ def test_set_negative_batch_size(device):
 
 def test_blob_setter(device):
     ie_core = ie.IECore()
+    if device == "CPU":
+        if ie_core.get_metric(device, "FULL_DEVICE_NAME") == "arm_compute::NEON":
+            pytest.skip("Can't run on ARM plugin")
     net = ie_core.read_network(test_net_xml, test_net_bin)
     exec_net_1 = ie_core.load_network(network=net, device_name=device, num_requests=1)
 
@@ -451,4 +462,64 @@ def test_blob_setter(device):
     request.set_blob('data', img_blob)
     request.infer()
     res_2 = np.sort(request.output_blobs['fc_out'].buffer)
+    assert np.allclose(res_1, res_2, atol=1e-2, rtol=1e-2)
+
+
+def test_blob_setter_with_preprocess(device):
+    ie_core = ie.IECore()
+    net = ie_core.read_network(test_net_xml, test_net_bin)
+    exec_net = ie_core.load_network(network=net, device_name=device, num_requests=1)
+
+    img = read_image()
+    tensor_desc = ie.TensorDesc("FP32", [1, 3, 32, 32], "NCHW")
+    img_blob = ie.Blob(tensor_desc, img)
+    preprocess_info = ie.PreProcessInfo()
+    preprocess_info.mean_variant = ie.MeanVariant.MEAN_IMAGE
+
+    request = exec_net.requests[0]
+    request.set_blob('data', img_blob, preprocess_info)
+    pp = request.preprocess_info["data"]
+    assert pp.mean_variant == ie.MeanVariant.MEAN_IMAGE
+
+
+def test_getting_preprocess(device):
+    ie_core = ie.IECore()
+    net = ie_core.read_network(test_net_xml, test_net_bin)
+    exec_net = ie_core.load_network(network=net, device_name=device, num_requests=1)
+    request = exec_net.requests[0]
+    preprocess_info = request.preprocess_info["data"]
+    assert isinstance(preprocess_info, ie.PreProcessInfo)
+    assert preprocess_info.mean_variant == ie.MeanVariant.NONE
+
+
+def test_resize_algorithm_work(device):
+    ie_core = ie.IECore()
+    net = ie_core.read_network(test_net_xml, test_net_bin)
+    exec_net_1 = ie_core.load_network(network=net, device_name=device, num_requests=1)
+
+    img = read_image()
+    res_1 = np.sort(exec_net_1.infer({"data": img})['fc_out'])
+
+    net.input_info['data'].preprocess_info.resize_algorithm = ie.ResizeAlgorithm.RESIZE_BILINEAR
+
+    exec_net_2 = ie_core.load_network(net, device)
+
+    import cv2
+
+    image = cv2.imread(path_to_img)
+    if image is None:
+        raise FileNotFoundError("Input image not found")
+
+    image = image / 255
+    image = image.transpose((2, 0, 1)).astype(np.float32)
+    image = np.expand_dims(image, 0)
+
+    tensor_desc = ie.TensorDesc("FP32", [1, 3, image.shape[2], image.shape[3]], "NCHW")
+    img_blob = ie.Blob(tensor_desc, image)
+    request = exec_net_2.requests[0]
+    assert request.preprocess_info["data"].resize_algorithm == ie.ResizeAlgorithm.RESIZE_BILINEAR
+    request.set_blob('data', img_blob)
+    request.infer()
+    res_2 = np.sort(request.output_blobs['fc_out'].buffer)
+
     assert np.allclose(res_1, res_2, atol=1e-2, rtol=1e-2)

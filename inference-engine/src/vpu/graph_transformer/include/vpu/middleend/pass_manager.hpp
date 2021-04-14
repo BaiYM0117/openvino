@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -147,7 +147,8 @@ public:
     //
 
     Pass::Ptr mergeReLUAndBias();
-    Pass::Ptr mergeEltwiseAndReLU();
+    Pass::Ptr mergeEltwiseAndReLUDynamic();
+    Pass::Ptr mergeEltwiseAndReLUStatic();
     Pass::Ptr replaceWithSCReLU();
     Pass::Ptr replaceWithReduceMean();
 
@@ -218,6 +219,7 @@ public:
     //
 
     Pass::Ptr dumpModel(const std::string& postfix);
+    Pass::Ptr markFastStages();
 
     //
     // Dilation Conv NCE  passes
@@ -243,7 +245,11 @@ public:
 
     Pass::Ptr replaceGemmByConv();
 
-    Pass::Ptr propagateDynamismToOutputs();
+    Pass::Ptr propagateDynamism();
+
+    Pass::Ptr annotateMemoryTypes();
+
+    Pass::Ptr reshapeBeforeConvTiling();
 
 protected:
     StageBuilder::Ptr _stageBuilder;

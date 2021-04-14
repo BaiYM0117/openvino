@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -13,7 +13,10 @@
 #include <memory>
 #include <string>
 
-#include <ie_plugin_ptr.hpp>
+#include <ie_parameter.hpp>
+#include <cpp/ie_cnn_network.h>
+#include <cpp/ie_executable_network.hpp>
+
 #include "threading/ie_itask_executor.hpp"
 
 namespace InferenceEngine {
@@ -65,8 +68,8 @@ public:
 
     /**
      * @brief Creates an executable network from a previously exported network
-     * @param deviceName Name of device load executable network on
      * @param networkModel network model stream
+     * @param deviceName Name of device load executable network on
      * @param config Optional map of pairs: (config parameter name, config parameter value) relevant only for this load
      * operation*
      * @return An executable network reference
@@ -82,7 +85,7 @@ public:
      * @param config Optional map of pairs: (config parameter name, config parameter value)
      * @return An object containing a map of pairs a layer name -> a device name supporting this layer.
      */
-    virtual QueryNetworkResult QueryNetwork(const ICNNNetwork& network, const std::string& deviceName,
+    virtual QueryNetworkResult QueryNetwork(const CNNNetwork& network, const std::string& deviceName,
                                             const std::map<std::string, std::string>& config) const = 0;
 
     /**
@@ -114,5 +117,21 @@ using ExportMagic = std::array<char, 4>;
  * @ingroup ie_dev_api_plugin_api
  */
 constexpr static const ExportMagic exportMagic = {{0x1, 0xE, 0xE, 0x1}};
+
+/**
+ * @private
+ */
+class INFERENCE_ENGINE_API_CLASS(DeviceIDParser) {
+    std::string deviceName;
+    std::string deviceID;
+public:
+    explicit DeviceIDParser(const std::string& deviceNameWithID);
+
+    std::string getDeviceID() const;
+    std::string getDeviceName() const;
+
+    static std::vector<std::string> getHeteroDevices(std::string fallbackDevice);
+    static std::vector<std::string> getMultiDevices(std::string devicesList);
+};
 
 }  // namespace InferenceEngine

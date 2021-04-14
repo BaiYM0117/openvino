@@ -1,4 +1,4 @@
-// Copyright (C) 2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -8,46 +8,36 @@
 #include "functional_test_utils/skip_tests_config.hpp"
 
 std::vector<std::string> disabledTestPatterns() {
-    // Not supported activation types
-    std::vector<std::string> unsupportedActivationTypes = {
+    return {
+        // Not supported activation types
         ".*ActivationLayerTest\\.CompareWithRefs/Tanh.*netPRC=FP32.*",
         ".*ActivationLayerTest\\.CompareWithRefs/Exp.*netPRC=FP32.*",
         ".*ActivationLayerTest\\.CompareWithRefs/Log.*netPRC=FP32.*",
         ".*ActivationLayerTest\\.CompareWithRefs/Sigmoid.*netPRC=FP32.*",
-        ".*ActivationLayerTest\\.CompareWithRefs/Relu.*netPRC=FP32.*"
+        ".*ActivationLayerTest\\.CompareWithRefs/Relu.*netPRC=FP32.*",
+        // TODO: Issue: 26268
+        ".*ConcatLayerTest.*axis=0.*",
+        // TODO: Issue 31197
+        R"(.*(IEClassBasicTestP).*smoke_registerPluginsXMLUnicodePath.*)",
+        // TODO: Issue: 34348
+        R"(.*IEClassGetAvailableDevices.*)",
+        // TODO: Issue: 40473
+        R"(.*TopKLayerTest.*mode=min.*sort=index.*)",
+        // TODO: Issue: 40961
+        R"(.*(ConstantResultSubgraphTest).*)",
+        // TODO: Issue: 42828
+        R"(.*DSR_NonMaxSuppression.*NBoxes=(5|20|200).*)",
+        // TODO: Issue: 42721
+        R"(.*(DSR_GatherND).*)",
+        // TODO: Issue 26090
+        ".*DSR_GatherStaticDataDynamicIdx.*f32.*1.3.200.304.*",
+        // TODO: Issue 47315
+        ".*ProposalLayerTest.*",
+        // TODO: Issue 48183
+        R"(.*CTCGreedyDecoderSeqLen.*?\(1.1.1\).*)",
+        // TODO: Issue 51472
+        ".*CachingSupportCase.*_batch2_.*",
+        // TODO: Issue 51804
+        ".*PreprocessConversionTest.*oPRC=U8.*",
     };
-
-    std::vector<std::string> behaviorTests = {
-        ".*Behavior.*ExecGraphTests.*"
-    };
-
-    // Issue 26268
-    std::vector<std::string> issue26268 = {
-        ".*ConcatLayerTest.*axis=0.*"
-    };
-
-    std::vector<std::string> testsToDisable;
-    testsToDisable.insert(testsToDisable.end(), unsupportedActivationTypes.begin(), unsupportedActivationTypes.end());
-    testsToDisable.insert(testsToDisable.end(), behaviorTests.begin(), behaviorTests.end());
-    testsToDisable.insert(testsToDisable.end(), issue26268.begin(), issue26268.end());
-
-    #if defined(_WIN32) || defined(WIN32)
-        // Issue 31197
-        std::vector<std::string> issue31197 = {
-            ".*IEClassBasicTestP\\.smoke_registerPluginsXMLUnicodePath/0.*",
-            ".*myriadLayersTestsProposal_smoke\\.Caffe.*",
-            ".*myriadLayersTestsProposal_smoke\\.CaffeNoClipBeforeNms.*",
-            ".*myriadLayersTestsProposal_smoke\\.CaffeClipAfterNms.*",
-            ".*myriadLayersTestsProposal_smoke\\.CaffeNormalizedOutput.*",
-            ".*myriadLayersTestsProposal_smoke\\.TensorFlow.*",
-            ".*myriadCTCDecoderLayerTests_smoke\\.CTCGreedyDecoder/0.*",
-            ".*myriadCTCDecoderLayerTests_smoke\\.CTCGreedyDecoder/1.*",
-            ".*myriadCTCDecoderLayerTests_smoke\\.CTCGreedyDecoder/2.*",
-            ".*myriadCTCDecoderLayerTests_smoke\\.CTCGreedyDecoder/3.*"
-        };
-
-        testsToDisable.insert(testsToDisable.end(), issue31197.begin(), issue31197.end());
-    #endif
-
-    return testsToDisable;
 }

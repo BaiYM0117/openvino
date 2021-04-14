@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -8,7 +8,6 @@
 #include <chrono>
 #include <iostream>
 
-#include "ie_ir_reader.hpp"
 #include "functional_test_utils/plugin_cache.hpp"
 
 using namespace InferenceEngine;
@@ -17,11 +16,11 @@ void myriadLayersTests_nightly::makeSingleLayerNetwork(const LayerParams& layerP
                                                        const NetworkParams& networkParams,
                                                        const WeightsBlob::Ptr& weights) {
     // Disable reorder in per-layer tests to make sure intended layout is used
-    _config[VPU_CONFIG_KEY(DISABLE_REORDER)] = CONFIG_VALUE(YES);
+    _config[InferenceEngine::MYRIAD_DISABLE_REORDER] = CONFIG_VALUE(YES);
 
     // White list of per-layer tests that allowed to reorder
     if (layerParams._layerType == "Flatten") {
-        _config[VPU_CONFIG_KEY(DISABLE_REORDER)] = CONFIG_VALUE(NO);
+        _config[InferenceEngine::MYRIAD_DISABLE_REORDER] = CONFIG_VALUE(NO);
     }
 
     ASSERT_NO_FATAL_FAILURE(

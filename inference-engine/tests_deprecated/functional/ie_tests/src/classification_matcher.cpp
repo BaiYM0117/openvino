@@ -1,15 +1,15 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
 #include "classification_matcher.hpp"
 #include <gtest/gtest.h>
-#include <xml_helper.hpp>
+#include <fstream>
+#include <legacy/details/ie_cnn_network_iterator.hpp>
 
 using namespace Regression ;
 using namespace Regression :: Matchers ;
 
-IE_SUPPRESS_DEPRECATED_START
 ClassificationMatcher::ClassificationMatcher(RegressionConfig &config)
     : BaseMatcher(config) {
     // Get file names for files with weights and labels
@@ -21,23 +21,6 @@ ClassificationMatcher::ClassificationMatcher(RegressionConfig &config)
 
     // Try to read labels file
     readLabels(labelFileName);
-
-    if (config._stat_file != "") {
-        InferenceEngine::NetworkStatsMap stat = testing::loadStatisticFromFile(config._stat_file);
-
-        ICNNNetworkStats *pstats;
-        ((ICNNNetwork&)cnnNetwork).getStats(&pstats, nullptr);
-        pstats->setNodesStats(stat);
-
-        // iterating over layers and fixing suppress_normalization->quantization_level
-        // because we have in tests IR which has old name for fp32 layers
-        for (auto& layer : cnnNetwork) {
-            if (layer->params.find("suppress_normalization") != layer->params.end() &&
-                layer->params["suppress_normalization"] == "I8") {
-                layer->params["quantization_level"] = "FP32";
-            }
-        }
-    }
 
     if (config._reshape) {
         auto inputShapes = cnnNetwork.getInputShapes();
@@ -84,7 +67,6 @@ ClassificationMatcher::ClassificationMatcher(RegressionConfig &config)
 
     top = (-1 == config.topKNumbers) ? 5 : config.topKNumbers;
 }
-IE_SUPPRESS_DEPRECATED_END
 
 void ClassificationMatcher::to(const std::vector <Regression::Reference::ClassificationScoringResultsForTests> &expected) {
     checkResultNumber = 0;
@@ -125,7 +107,7 @@ void ClassificationMatcher::readLabels(std::string labelFilePath) {
             config.labels.push_back(TestsCommon::trim(line));
         }
     } else {
-        THROW_IE_EXCEPTION << "cannot open label file: " << labelFilePath;
+        IE_THROW() << "cannot open label file: " << labelFilePath;
 
     }
 }
@@ -133,7 +115,7 @@ void ClassificationMatcher::readLabels(std::string labelFilePath) {
 int ClassificationMatcher::getIndexByLabel(const std::string &label) {
     auto result = std::find(begin(config.labels), end(config.labels), label);
     if (result == config.labels.end()) {
-        THROW_IE_EXCEPTION << "cannot locate index for label : " << label;
+        IE_THROW() << "cannot locate index for label : " << label;
     }
     return static_cast<int>(std::distance(begin(config.labels), result));
 }
@@ -143,7 +125,7 @@ std::string ClassificationMatcher::getLabel(unsigned int index) {
         return "label #" + std::to_string(index);
     }
     if (index >= config.labels.size()) {
-        THROW_IE_EXCEPTION << "index out of labels file: " << index;
+        IE_THROW() << "index out of labels file: " << index;
     }
 
     return config.labels[index];
@@ -203,7 +185,7 @@ template <class T>
 inline void TopResults(unsigned int n, TBlob<T>& input, std::vector<unsigned>& output) {
     SizeVector dims = input.getTensorDesc().getDims();
     size_t input_rank = dims.size();
-    if (!input_rank || !dims[0]) THROW_IE_EXCEPTION << "Input blob has incorrect dimensions!";
+    if (!input_rank || !dims[0]) IE_THROW() << "Input blob has incorrect dimensions!";
     size_t batchSize = dims[0];
     std::vector<unsigned> indexes(input.size() / batchSize);
 
@@ -231,22 +213,18 @@ inline void TopResults(unsigned int n, TBlob<T>& input, std::vector<unsigned>& o
 
 void ClassificationMatcher::match_n(size_t top, int index) {
     try {
-        InferenceEngine::IInferRequest::Ptr inferRequest;
-        if (_executableNetworks[index]->CreateInferRequest(inferRequest, &_resp) != OK) {
-            THROW_IE_EXCEPTION << "Can not create infer request: " << _resp.msg;
-        }
+        auto inferRequest = _executableNetworks[index].CreateInferRequest();
         std::string prevImageName = "";
 
         auto batchSize = config.batchSize;
 
         if (config.useDynamicBatching) {
             batchSize = config.dynBatch;
-            InferenceEngine::ResponseDesc resp;
-            inferRequest->SetBatch(batchSize, &resp);
+            inferRequest.SetBatch(batchSize);
         }
 
         if (config._paths_to_images.size() % batchSize != 0) {
-            THROW_IE_EXCEPTION << "Can not process all input images("<< config._paths_to_images.size()
+            IE_THROW() << "Can not process all input images("<< config._paths_to_images.size()
                                <<") using given batch size of " << batchSize;
         }
         // loading images in batches
@@ -267,25 +245,14 @@ void ClassificationMatcher::match_n(size_t top, int index) {
                 for (int j = 0; j != batchSize; j++) {
                     const auto & imageName  = config._paths_to_images[i + j];
 
-                    InferenceEngine::Blob::Ptr inputBlob;
-                    if (inferRequest->GetBlob(_inputsInfo.begin()->first.c_str(), inputBlob, &_resp) != OK) {
-                        THROW_IE_EXCEPTION << "Can not get input with name: " << _inputsInfo.begin()->first
-                                           << " error message: " << _resp.msg;
-                    }
+                    auto inputBlob = inferRequest.GetBlob(_inputsInfo.begin()->first.c_str());
                     loadImage(imageName, inputBlob, true, j);
                 }
             }
 
-            StatusCode status = inferRequest->Infer(&_resp);
-            if (status != OK) {
-                THROW_IE_EXCEPTION << "Can not do infer: " << _resp.msg;
-            }
+            inferRequest.Infer();
 
-            InferenceEngine::Blob::Ptr outputBlobPtr;
-            if (inferRequest->GetBlob(_outputsInfo.begin()->first.c_str(), outputBlobPtr, &_resp) != OK) {
-                THROW_IE_EXCEPTION << "Can not get output with name: " << _outputsInfo.begin()->first
-                                   << " error message: " << _resp.msg;
-            }
+            auto outputBlobPtr = inferRequest.GetBlob(_outputsInfo.begin()->first.c_str());
 
             InferenceEngine::TBlob<float>::Ptr outputFP32;
                 if (outputBlobPtr->getTensorDesc().getPrecision() == InferenceEngine::Precision::FP16) {
@@ -297,7 +264,7 @@ void ClassificationMatcher::match_n(size_t top, int index) {
                 } else if (outputBlobPtr->getTensorDesc().getPrecision() == InferenceEngine::Precision::FP32) {
                     outputFP32 = dynamic_pointer_cast<InferenceEngine::TBlob<float>>(outputBlobPtr);
                 } else {
-                    THROW_IE_EXCEPTION << "Unsupported output format for test. Supported FP16, FP32";
+                    IE_THROW() << "Unsupported output format for test. Supported FP16, FP32";
                 }
 
             vector<unsigned> topClassesIndexes;
@@ -307,7 +274,7 @@ void ClassificationMatcher::match_n(size_t top, int index) {
 
             saveResults(topClassesIndexes, probabilities, top);
         }
-    } catch (InferenceEngine::details::InferenceEngineException &e) {
+    } catch (InferenceEngine::Exception &e) {
         FAIL() << e.what();
     } catch (std::exception &e) {
         FAIL() << e.what();

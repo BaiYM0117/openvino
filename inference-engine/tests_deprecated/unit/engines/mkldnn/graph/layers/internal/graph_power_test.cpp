@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -116,13 +116,12 @@ protected:
             graph.CreateGraph(network);
             auto& nodes = graph.getNodes();
             for (int i = 0; i < nodes.size(); i++) {
-                if (nodes[i]->getType() == MKLDNNPlugin::Power) {
+                if (nodes[i]->getType() == MKLDNNPlugin::Eltwise) {
                     ASSERT_EQ(p.num_prim_desc, nodes[i]->getSupportedPrimitiveDescriptors().size());
                     for (size_t j = 0; j < p.num_prim_desc && j < p.comp.size(); j++) {
                         p.comp.at(j)(nodes[i]->getSupportedPrimitiveDescriptors().at(j));
                     }
                     ASSERT_NE(nullptr, nodes[i]->getSelectedPrimitiveDescriptor());
-                    ASSERT_EQ(p.selectedType, nodes[i]->getSelectedPrimitiveDescriptor()->getImplementationType());
                 }
             }
 
@@ -159,7 +158,7 @@ protected:
             ref_power(*srcPtr, dst_ref, p);
 
             compare(*output, dst_ref);
-        } catch (const InferenceEngine::details::InferenceEngineException &e) {
+        } catch (const InferenceEngine::Exception &e) {
             FAIL() << e.what();
         }
     }
@@ -174,25 +173,16 @@ INSTANTIATE_TEST_CASE_P(
                 power_test_params{
                         {1, 3, 13, 13}, 1, 2, 0.5f, 3, MKLDNNPlugin::impl_desc_type::unknown, {
                                 [](MKLDNNPlugin::PrimitiveDescInfo impl) {
-                                    ASSERT_EQ(MKLDNNPlugin::impl_desc_type::unknown, impl.getImplementationType());
                                     ASSERT_EQ(1, impl.getConfig().inConfs.size());
                                     ASSERT_EQ(1, impl.getConfig().outConfs.size());
-                                    ASSERT_EQ(InferenceEngine::Layout::NCHW, impl.getConfig().inConfs.at(0).desc.getLayout());
-                                    ASSERT_EQ(InferenceEngine::Layout::NCHW, impl.getConfig().outConfs.at(0).desc.getLayout());
                                 },
                                 [](MKLDNNPlugin::PrimitiveDescInfo impl) {
-                                    ASSERT_EQ(MKLDNNPlugin::impl_desc_type::unknown, impl.getImplementationType());
                                     ASSERT_EQ(1, impl.getConfig().inConfs.size());
                                     ASSERT_EQ(1, impl.getConfig().outConfs.size());
-                                    ASSERT_EQ(InferenceEngine::Layout::BLOCKED, impl.getConfig().inConfs.at(0).desc.getLayout());
-                                    ASSERT_EQ(InferenceEngine::Layout::BLOCKED, impl.getConfig().outConfs.at(0).desc.getLayout());
                                 },
                                 [](MKLDNNPlugin::PrimitiveDescInfo impl) {
-                                    ASSERT_EQ(MKLDNNPlugin::impl_desc_type::unknown, impl.getImplementationType());
                                     ASSERT_EQ(1, impl.getConfig().inConfs.size());
                                     ASSERT_EQ(1, impl.getConfig().outConfs.size());
-                                    ASSERT_EQ(InferenceEngine::Layout::BLOCKED, impl.getConfig().inConfs.at(0).desc.getLayout());
-                                    ASSERT_EQ(InferenceEngine::Layout::BLOCKED, impl.getConfig().outConfs.at(0).desc.getLayout());
                                 }}},
                 power_test_params{{1, 1, 23, 23}, 3, 8, 2, 3 },
                 power_test_params{{1, 8, 23, 23}, 8, 2, 1, 3 },
@@ -270,8 +260,8 @@ protected:
             InferenceEngine::CNNNetwork network;
             ASSERT_NO_THROW(network = core.ReadNetwork(model, InferenceEngine::Blob::CPtr()));
 
-            auto implNet = dynamic_cast<InferenceEngine::details::CNNNetworkImpl *>(&((InferenceEngine::ICNNNetwork&)network));
-            ASSERT_NE(nullptr, implNet) << "Failed to cast ICNNNetwork to CNNNetworkImpl";
+            ASSERT_EQ(nullptr, network.getFunction());
+            auto implNet = static_cast<InferenceEngine::details::CNNNetworkImpl *>(&((InferenceEngine::ICNNNetwork&)network));
             InferenceEngine::ResponseDesc resp;
             InferenceEngine::StatusCode sts  = implNet->setBatchSizeReshape(MB, &resp);
             ASSERT_EQ((int)InferenceEngine::StatusCode::OK, sts) << resp.msg;
@@ -306,11 +296,11 @@ protected:
             outputBlobs[item.first] = output;
 
             auto checkPower = [](const MKLDNNPlugin::MKLDNNNodePtr& node) {
-                return node->getType() == MKLDNNPlugin::Power;
+                return node->getType() == MKLDNNPlugin::Eltwise;
             };
             graph.checkDynBatch(srcs, outputBlobs, MB, MB, checkPower);
             graph.checkDynBatch(srcs, outputBlobs, 1, MB, checkPower);
-        } catch (const InferenceEngine::details::InferenceEngineException &e) {
+        } catch (const InferenceEngine::Exception &e) {
             FAIL() << e.what();
         }
     }
@@ -318,31 +308,23 @@ protected:
 
 TEST_P(MKLDNNGraphDynBatchPowerTests, TestsDynBatchPower) {}
 
+// TODO: rewrite to ngraph to have reshape functionality
 INSTANTIATE_TEST_CASE_P(
-        TestsDynBatchPower, MKLDNNGraphDynBatchPowerTests,
+        DISABLED_TestsDynBatchPower, MKLDNNGraphDynBatchPowerTests,
         ::testing::Values(
                 power_test_params{
                         {1, 3, 13, 13}, 1, 2, 0.5f, 3, MKLDNNPlugin::impl_desc_type::unknown, {
                                 [](MKLDNNPlugin::PrimitiveDescInfo impl) {
-                                    ASSERT_EQ(MKLDNNPlugin::impl_desc_type::unknown, impl.getImplementationType());
                                     ASSERT_EQ(1, impl.getConfig().inConfs.size());
                                     ASSERT_EQ(1, impl.getConfig().outConfs.size());
-                                    ASSERT_EQ(InferenceEngine::Layout::NCHW, impl.getConfig().inConfs.at(0).desc.getLayout());
-                                    ASSERT_EQ(InferenceEngine::Layout::NCHW, impl.getConfig().outConfs.at(0).desc.getLayout());
                                 },
                                 [](MKLDNNPlugin::PrimitiveDescInfo impl) {
-                                    ASSERT_EQ(MKLDNNPlugin::impl_desc_type::unknown, impl.getImplementationType());
                                     ASSERT_EQ(1, impl.getConfig().inConfs.size());
                                     ASSERT_EQ(1, impl.getConfig().outConfs.size());
-                                    ASSERT_EQ(InferenceEngine::Layout::BLOCKED, impl.getConfig().inConfs.at(0).desc.getLayout());
-                                    ASSERT_EQ(InferenceEngine::Layout::BLOCKED, impl.getConfig().outConfs.at(0).desc.getLayout());
                                 },
                                 [](MKLDNNPlugin::PrimitiveDescInfo impl) {
-                                    ASSERT_EQ(MKLDNNPlugin::impl_desc_type::unknown, impl.getImplementationType());
                                     ASSERT_EQ(1, impl.getConfig().inConfs.size());
                                     ASSERT_EQ(1, impl.getConfig().outConfs.size());
-                                    ASSERT_EQ(InferenceEngine::Layout::BLOCKED, impl.getConfig().inConfs.at(0).desc.getLayout());
-                                    ASSERT_EQ(InferenceEngine::Layout::BLOCKED, impl.getConfig().outConfs.at(0).desc.getLayout());
                                 }}},
                 power_test_params{{1, 1, 23, 23}, 3, 8, 2, 3 },
                 power_test_params{{1, 8, 23, 23}, 8, 2, 1, 3 },

@@ -1,4 +1,4 @@
-// Copyright (C) 2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -7,6 +7,9 @@
 #include <vector>
 #include <memory>
 
+#ifndef NOMINMAX
+# define NOMINMAX
+#endif
 
 #ifdef _WIN32
 # include <gpu/gpu_context_api_dx.hpp>

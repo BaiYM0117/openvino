@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -6,7 +6,7 @@
 
 #include "single_layer_common.hpp"
 #include <unordered_set>
-#include <cnn_network_impl.hpp>
+#include <legacy/cnn_network_impl.hpp>
 #include <ie_core.hpp>
 #include <ie_plugin_config.hpp>
 #include "tests_common.hpp"
@@ -135,6 +135,9 @@ protected:
                 case 5:
                     layout = InferenceEngine::NCDHW;
                     break;
+                case 6:
+                    layout = InferenceEngine::BLOCKED;
+                    break;
             }
 
             InferenceEngine::Blob::Ptr src1 = InferenceEngine::make_shared_blob<float>({InferenceEngine::Precision::FP32, dims_src1, layout});
@@ -194,7 +197,7 @@ protected:
                     index2++; index++;
                 }
             }
-        } catch (const InferenceEngine::details::InferenceEngineException &e) {
+        } catch (const InferenceEngine::Exception &e) {
             FAIL() << e.what();
         }
     }
@@ -318,8 +321,8 @@ protected:
             InferenceEngine::CNNNetwork network;
             ASSERT_NO_THROW(network = core.ReadNetwork(model, InferenceEngine::Blob::CPtr()));
 
-            auto implNet = dynamic_cast<InferenceEngine::details::CNNNetworkImpl *>(&((InferenceEngine::ICNNNetwork&)network));
-            ASSERT_NE(nullptr, implNet) << "Failed to cast ICNNNetwork to CNNNetworkImpl";
+            ASSERT_EQ(nullptr, network.getFunction());
+            auto implNet = static_cast<InferenceEngine::details::CNNNetworkImpl *>(&((InferenceEngine::ICNNNetwork&)network));
             InferenceEngine::ResponseDesc resp;
             InferenceEngine::StatusCode sts  = implNet->setBatchSizeReshape(MB, &resp);
             ASSERT_EQ((int)InferenceEngine::StatusCode::OK, sts) << resp.msg;
@@ -337,6 +340,9 @@ protected:
                     break;
                 case 5:
                     layout = InferenceEngine::NCDHW;
+                    break;
+                case 6:
+                    layout = InferenceEngine::BLOCKED;
                     break;
             }
 
@@ -373,7 +379,7 @@ protected:
 
             graph.checkDynBatch(srcs, outputBlobs, MB, MB, checkConcat, checkType);
             graph.checkDynBatch(srcs, outputBlobs, 1, MB, checkConcat, checkType);
-        } catch (const InferenceEngine::details::InferenceEngineException &e) {
+        } catch (const InferenceEngine::Exception &e) {
             FAIL() << e.what();
         }
     }
@@ -382,8 +388,9 @@ protected:
 TEST_P(MKLDNNGraphDynBatchConcatTests, TestsDynBatchConcat) {}
 
 
+// TODO: rewrite to ngraph to have reshape functionality
 INSTANTIATE_TEST_CASE_P(
-        TestsDynBatchConcat, MKLDNNGraphDynBatchConcatTests,
+        DISABLED_TestsDynBatchConcat, MKLDNNGraphDynBatchConcatTests,
         ::testing::Values(
                 concat_test_params {
                         {1, 7, 2, 5},
@@ -396,11 +403,6 @@ INSTANTIATE_TEST_CASE_P(
                         1, 2, MKLDNNPlugin::impl_desc_type::unknown
                 },
                 concat_test_params {
-                        {3, 7, 2, 5},
-                        {3, 13, 2, 5},
-                        1, 2, MKLDNNPlugin::impl_desc_type::unknown
-                },
-                concat_test_params {
                         {1, 7, 2, 13},
                         {1, 7, 2, 17},
                         3, 1, MKLDNNPlugin::impl_desc_type::ref
@@ -409,6 +411,11 @@ INSTANTIATE_TEST_CASE_P(
                         {1, 8, 8, 16},
                         {1, 16, 8, 16},
                         1, 4, MKLDNNPlugin::impl_desc_type::unknown
+                },
+                concat_test_params {
+                        {3, 7, 2, 5},
+                        {3, 13, 2, 5},
+                        1, 2, MKLDNNPlugin::impl_desc_type::unknown
                 },
                 concat_test_params {
                         {2, 2, 3, 3},
@@ -522,7 +529,7 @@ class MKLDNNGraphTwoConcatTests: public TestsCommon,
         if (!FIND_STR(model, TL) || !FIND_STR(model, TP)) {
             if (!FIND_STR(model, "_FSL_") || !FIND_STR(model, "_FSP_") ||
                     !FIND_STR(model, "_FSLTL_") || !FIND_STR(model, "_FSLTP_")) {
-                THROW_IE_EXCEPTION << "Incorrect configuration!";
+                IE_THROW() << "Incorrect configuration!";
             }
             REPLACE_WITH_NUM(model, "_FSL_", f_l);
             REPLACE_WITH_NUM(model, "_FSP_", f_p);
@@ -784,7 +791,7 @@ protected:
                     }
                 }
             }
-        } catch (const InferenceEngine::details::InferenceEngineException &e) {
+        } catch (const InferenceEngine::Exception &e) {
             FAIL() << e.what();
         }
     }
@@ -984,12 +991,9 @@ protected:
             graph.Infer(srcs, outputBlobs);
 
             float *src1_ptr = src2->buffer();
-            size_t src1_size = src2->size();
             float *src2_ptr = src1->buffer();
-            size_t src2_size = src1->size();
 
             float *dst_ptr = outputBlobs["o_concat"]->buffer();
-            size_t dst_size = outputBlobs["o_concat"]->size();
 
             int len1 = 1, len2 = 1, cycles;
             for (int dim = 1; dim < outputBlobs["o_concat"]->getTensorDesc().getDims().size(); dim++) {
@@ -1017,113 +1021,10 @@ protected:
                     index2++; index++;
                 }
             }
-        } catch (const InferenceEngine::details::InferenceEngineException &e) {
+        } catch (const InferenceEngine::Exception &e) {
             FAIL() << e.what();
         }
     }
 };
 
 TEST_F(MKLDNNGraphTwoInputInConcatTests, TestSecondInputToConcat) {}
-
-class MKLDNNGraphIncorrectConcatTests: public TestsCommon,
-                              public WithParamInterface<concat_test_params> {
-    std::string model_t = R"V0G0N(
-<net name="ConcatOnly" version="2" precision="FP32" batch="1">
-    <layers>
-        <layer name="in1" type="Input" precision="FP32" id="1">
-            <output>
-                <port id="1">__SRC_DIMS_1__
-                </port>
-            </output>
-        </layer>
-        <layer name="in2" type="Input" precision="FP32" id="2">
-            <output>
-                <port id="2">__SRC_DIMS_2__
-                </port>
-            </output>
-        </layer>
-        <layer name="con" id="3" type="Concat" precision="FP32">
-            <concat_data axis="_AXIS_"/>
-            <input>
-                <port id="1">__SRC_DIMS_1__
-                </port>
-                <port id="2">__SRC_DIMS_2__
-                </port>
-            </input>
-            <output>
-                <port id="3">__DST_DIMS__
-                </port>
-            </output>
-        </layer>
-    </layers>
-    <edges>
-        <edge from-layer="1" from-port="1" to-layer="3" to-port="1"/>
-        <edge from-layer="2" from-port="2" to-layer="3" to-port="2"/>
-    </edges>
-</net>
-)V0G0N";
-
-    std::string getModel(concat_test_params p) {
-        std::string model = model_t;
-        std::string s_dims;
-        for (auto& dim : p.in1) {
-            s_dims += "\n                    <dim>";
-            s_dims += std::to_string(dim) + "</dim>";
-        }
-	REPLACE_WITH_STR(model, "__SRC_DIMS_1__", s_dims);
-
-        s_dims = "";
-        for (auto& dim : p.in2) {
-            s_dims += "\n                    <dim>";
-            s_dims += std::to_string(dim) + "</dim>";
-        }
-	REPLACE_WITH_STR(model, "__SRC_DIMS_2__", s_dims);
-
-        s_dims = "";
-        for (size_t i = 0; i < p.in1.size(); i++) {
-            size_t dim = p.axis == i ? p.in1[i] + p.in2[i] : p.in1[i];
-            s_dims += "\n                    <dim>";
-            s_dims += std::to_string(dim) + "</dim>";
-        }
-	REPLACE_WITH_STR(model, "__DST_DIMS__", s_dims);
-
-        REPLACE_WITH_NUM(model, "_AXIS_", p.axis);
-        return model;
-    }
-
-protected:
-    virtual void TearDown() {
-    }
-
-    virtual void SetUp() {
-        try {
-            TestsCommon::SetUp();
-            concat_test_params p = ::testing::WithParamInterface<concat_test_params>::GetParam();
-            std::string model = getModel(p);
-
-            InferenceEngine::Core core;
-            // TODO: check InferenceEngine::details::InferenceEngineException when RTTI issue will be resolved
-            ASSERT_THROW(core.ReadNetwork(model, InferenceEngine::Blob::CPtr()),
-                         std::exception);
-        } catch (const InferenceEngine::details::InferenceEngineException &e) {
-            FAIL() << e.what();
-        }
-    }
-};
-
-TEST_P(MKLDNNGraphIncorrectConcatTests, TestsIncorrectConcat) {}
-
-
-INSTANTIATE_TEST_CASE_P(
-        TestsIncorrectConcat, MKLDNNGraphIncorrectConcatTests,
-        ::testing::Values(
-                concat_test_params {
-                        {1, 7, 2, 5},
-                        {1, 7, 3, 5},
-                        1
-                },
-                concat_test_params {
-                        {1, 7, 2, 5},
-                        {1, 7, 4, 4},
-                        2
-                }));

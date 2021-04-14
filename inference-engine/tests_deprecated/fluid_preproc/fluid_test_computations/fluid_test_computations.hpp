@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -96,6 +96,12 @@ class FLUID_COMPUTATION_VISIBILITY FluidI420toRGBComputation : public FluidCompu
 {
 public:
     FluidI420toRGBComputation(test::Mat inMat_y, test::Mat inMat_u, test::Mat inMat_v, test::Mat outMat);
+};
+
+class FLUID_COMPUTATION_VISIBILITY ConvertDepthComputation : public FluidComputation
+{
+public:
+    ConvertDepthComputation(test::Mat inMat, test::Mat outMat, int depth);
 };
 
 #endif // FLUID_TEST_COMPUTATIONS_HPP
